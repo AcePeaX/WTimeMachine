@@ -1,0 +1,15 @@
+{
+  "name": "timemachine",
+  "version": "0.0.1",
+  "description": "An app to inspect lost conversations in WhatsApp",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "AcePeaX",
+  "license": "ISC",
+  "workspaces": [
+    "packages/backend",
+    "packages/frontend"
+  ]
+}
