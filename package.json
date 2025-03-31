@@ -4,12 +4,18 @@
   "description": "An app to inspect lost conversations in WhatsApp",
   "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start:backend": "npm run start --workspace=backend",
+    "dev:backend": "npm run dev --workspace=backend",
+    "start:frontend": "npm run start --workspace=frontend",
+    "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\""
   },
   "author": "AcePeaX",
   "license": "ISC",
   "workspaces": [
     "packages/backend",
     "packages/frontend"
-  ]
+  ],
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
 }

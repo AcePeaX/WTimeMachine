@@ -1,0 +1,14 @@
+services:
+  mongo:
+    image: mongo:latest
+    container_name: mongo-timemach
+    ports:
+      - "27017:27017"
+    #volumes:
+    #  - mongo-data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example_password
+
+#volumes:
+#  mongo-data:
