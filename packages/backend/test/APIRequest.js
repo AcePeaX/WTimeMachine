@@ -47,5 +47,5 @@ const result2 = await APIReq({
 
 console.log(result2)
 console.log("\nDecrypting message:")
-const result3 = decryptRequestData(result2.encryptedAESKey, result2.encryptedMessage,prvKey)
+const result3 = decryptRequestData(result2.key, result2.encryptedMessage,prvKey)
 console.log(result3)

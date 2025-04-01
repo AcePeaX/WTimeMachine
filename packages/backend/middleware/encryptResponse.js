@@ -18,7 +18,7 @@ export function encryptResponse(req, res, next) {
           const { encryptedAESKey, encryptedMessage } = encryptResponseData(body, req.user.publicKey);
           // Set the flag so subsequent calls won't encrypt again
           encrypted = true;
-          return originalSend({ encryptedAESKey, encryptedMessage });
+          return originalSend({ key: encryptedAESKey, encryptedMessage });
         } catch (error) {
           console.error("Error encrypting response:", error);
           return originalSend({ error: "Failed to encrypt response." });
