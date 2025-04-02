@@ -1,5 +1,5 @@
 import { User } from '../models/User.js';
-import { verifyMessage } from './encryptionUtils.js';
+import { verifyMessage } from '@timemachine/security';
 
 // Authentication Middleware
 export async function authenticate(req, res, next) {

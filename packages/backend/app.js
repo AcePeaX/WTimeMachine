@@ -13,7 +13,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 // Connect to MongoDB
-mongoose.connect('mongodb://root:example_password@localhost:27017/secure-auth-app?authSource=admin');
+mongoose.connect('mongodb://root:example_password@localhost:27017/time-machine?authSource=admin');
 
 const db = mongoose.connection;
 db.on('error', console.error.bind(console, 'connection error:'));

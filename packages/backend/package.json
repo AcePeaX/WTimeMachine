@@ -10,6 +10,7 @@
     "test:api": "node test/APIRequest.js"
   },
   "keywords": [],
+  "homepage": ".",
   "author": "",
   "license": "ISC",
   "dependencies": {

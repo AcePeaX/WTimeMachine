@@ -1,4 +1,4 @@
-import { encryptResponseData } from './encryptionUtils.js';
+import { encryptResponseData } from '@timemachine/security';
 
 export function encryptResponse(req, res, next) {
     // Store the original send method in a closure variable
