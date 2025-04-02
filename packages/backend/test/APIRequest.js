@@ -1,5 +1,5 @@
-import { generateSignMessage, decryptRequestData } from "../middleware/encryptionUtils.js";
-
+import { generateSignMessage, decryptRequestData } from "@timemachine/security";
+import crypto from 'crypto';
 
 const APIReq = async (props)=>{
     const defaults = {
@@ -24,19 +24,33 @@ const APIReq = async (props)=>{
 
 const username = 'test_user_'+Date.now()
 
+// Generate key pair
+const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
+    modulusLength: 2048,
+    publicKeyEncoding: {
+    type: 'spki',
+    format: 'pem'
+    },
+    privateKeyEncoding: {
+    type: 'pkcs8',
+    format: 'pem'
+    }
+});
+
+
 const result = await APIReq({
     url: "http://localhost:3000",
     path: "/register",
     method: 'POST',
-    body: {username:username}
+    body: generateSignMessage(username,{publicKey},privateKey)
 })
 
-if(!result.privateKey){
-    throw Error('Problem while registering')
+if(!result.username){
+    throw Error('Problem while registering: '+ JSON.stringify(result))
 }else{
     console.log("Register successful: "+username)
 }
-const prvKey = result.privateKey
+const prvKey = privateKey
 
 const result2 = await APIReq({
     url: "http://localhost:3000",
