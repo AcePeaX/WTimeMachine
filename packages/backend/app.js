@@ -5,9 +5,11 @@ import { encryptResponse } from './middleware/encryptResponse.js';
 import { User } from './models/User.js';
 import crypto from 'crypto';
 import { verifyMessage } from '@timemachine/security';
-import AES from 'aes-js';
+import dotenv from 'dotenv';
 
 const app = express();
+
+dotenv.config({ path: '../../.env' });
 
 // Middleware
 app.use(express.json());
@@ -76,6 +78,6 @@ app.post('/protected', authenticate, encryptResponse, (req, res) => {
 });
 
 // Start the server
-app.listen(3000, () => {
-  console.log('Backend server is running on http://localhost:3000');
+app.listen(process.env.BACKEND_PORT, () => {
+  console.log('Backend server is running on http://localhost:'+process.env.BACKEND_PORT);
 });

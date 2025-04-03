@@ -1,9 +1,14 @@
 import { generateSignMessage, decryptRequestData } from "@timemachine/security";
 import crypto from 'crypto';
+import dotenv from 'dotenv';
+
+dotenv.config({ path: '../../.env' });
+
+const TEST_URL = "http://localhost:"+process.env.BACKEND_PORT
 
 const APIReq = async (props)=>{
     const defaults = {
-        url: "'http://localhost",
+        url: TEST_URL,
         path: "/",
         method: "GET",
         headers: {},
@@ -39,7 +44,6 @@ const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
 
 
 const result = await APIReq({
-    url: "http://localhost:3000",
     path: "/register",
     method: 'POST',
     body: generateSignMessage(username,{publicKey},privateKey)
@@ -53,7 +57,6 @@ if(!result.username){
 const prvKey = privateKey
 
 const result2 = await APIReq({
-    url: "http://localhost:3000",
     path: "/protected",
     method: 'POST',
     body: generateSignMessage(username, {hey:"lo"}, prvKey)
