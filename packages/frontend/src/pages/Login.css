@@ -1,0 +1,132 @@
+body {
+    margin: 0;
+    font-family: "Inter", sans-serif;
+    background-color: var(--bg);
+    color: var(--text);
+}
+
+.login-page {
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--bg);
+}
+
+.login-box {
+    background: white;
+    padding: 2.5rem 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    width: 100%;
+    max-width: 420px;
+    text-align: center;
+}
+
+.logo-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+}
+
+.logo-icon {
+    height: 40px;
+    margin-right: 0.75rem;
+}
+
+.logo-text {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.form label {
+    font-weight: 500;
+    display: block;
+    margin-bottom: 0.5rem;
+    text-align: left;
+}
+
+select {
+    width: 100%;
+    padding: 0.6rem;
+    margin-bottom: 1rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.btn {
+    font-size: 1rem;
+    padding: 0.7rem;
+    width: 100%;
+    border-radius: 6px;
+    margin-top: 0.5rem;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn.connect {
+    background-color: var(--secondary);
+    color: white;
+}
+
+.actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.btn.secondary {
+    background-color: white;
+    color: var(--text);
+    border: 1px solid #e5e7eb;
+}
+
+.btn.primary {
+    background-color: var(--primary);
+    color: white;
+}
+
+/**************************************************************************************/
+
+/* Modal-specific styles */
+
+.modal-overlay h2 {
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+    color: var(--text);
+    text-align: center;
+}
+
+.modal-overlay input[type="text"] {
+    box-sizing: border-box;
+    display: block;
+    width: 100%;
+    padding: 0.6rem;
+    margin-bottom: 1rem;
+    border: 1px solid #E5E7EB;
+    border-radius: 6px;
+    font-size: 1rem;
+    color: var(--text);
+    background-color: white;  
+}
+
+.modal-overlay .btn.confirm {
+    width: 100%;
+    background-color: var(--primary);
+    color: white;
+    font-weight: 600;
+    padding: 0.7rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.modal-overlay .btn.confirm:hover {
+    background-color: #6b21a8; /* Slightly darker shade of primary */
+}

@@ -11,3 +11,40 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* styles/themes.css */
+:root {
+  --bg: #FAFAFB;
+  --primary: #7C3AED;
+  --secondary: #34D399;
+  --text: #1F2937;
+}
+
+.theme-soft-tech {
+  --bg: #FAFAFB;
+  --primary: #7C3AED;
+  --secondary: #34D399;
+  --text: #1F2937;
+}
+
+.theme-cyber-clean {
+  --bg: #0F172A;
+  --primary: #3B82F6;
+  --secondary: #FACC15;
+  --text: #E5E7EB;
+}
+
+.theme-trust-warmth {
+  --bg: #F9FAFB;
+  --primary: #0EA5E9;
+  --secondary: #F97316;
+  --text: #374151;
+}
+
+.theme-monochrome-zen {
+  --bg: #FFFFFF;
+  --primary: #111827;
+  --secondary: #6B7280;
+  --text: #111827;
+}
+

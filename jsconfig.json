@@ -5,5 +5,5 @@
         "@timemachine/security": ["packages/security"]
       }
     }
-  }
+}
   
