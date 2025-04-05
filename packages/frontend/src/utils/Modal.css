@@ -9,7 +9,7 @@
 }
 
 .modal-content {
-    background: white;
+    background: var(--bg);
     padding: 2rem;
     border-radius: 12px;
     width: 90%;
@@ -29,3 +29,4 @@
     cursor: pointer;
     color: var(--text);
 }
+

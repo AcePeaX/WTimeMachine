@@ -109,11 +109,11 @@ select {
     width: 100%;
     padding: 0.6rem;
     margin-bottom: 1rem;
-    border: 1px solid #E5E7EB;
+    border: 1px solid #e5e7eb;
     border-radius: 6px;
     font-size: 1rem;
     color: var(--text);
-    background-color: white;  
+    background-color: white;
 }
 
 .modal-overlay .btn.confirm {
@@ -129,4 +129,69 @@ select {
 
 .modal-overlay .btn.confirm:hover {
     background-color: #6b21a8; /* Slightly darker shade of primary */
+}
+
+.modal-info {
+    margin: 1rem 0;
+    font-size: 0.95rem;
+    color: var(--text);
+    line-height: 1.4;
+    text-align: left;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.modal-input {
+    width: 100%;
+    padding: 0.6rem;
+    margin-bottom: 0.75rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 1rem;
+}
+
+.btn:disabled,
+.btn[disabled] {
+    background-color: #d1d5db !important; /* Tailwind's gray-300 */
+    color: #9ca3af; /* Tailwind's gray-500 */
+    cursor: not-allowed;
+    opacity: 0.6;
+    border: none;
+    transform: none !important;
+    cursor: default !important;
+}
+
+.keep-unsafe,
+.safe-button {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; /* optional: adds "..." */
+}
+
+.lock-animation {
+    opacity: 0;
+    animation: fadeIn 0.6s ease-in-out forwards;
+    transform: translate(0%, -50%);
+}
+
+@keyframes fadeIn {
+    to {
+        opacity: 1;
+    }
+}
+
+.lock-animation-1 {
+    filter: var(--secondary-filter);
+}
+
+.lock-animation-2{
+    filter: var(--bg-filter);
+}
+.lock-animation-2 > div {
+    filter: invert(100%);
 }

@@ -14,13 +14,13 @@ apiRouter.post("/register", async (req, res) => {
     try {
         body = JSON.parse(req.body.globalmessage);
     } catch (err) {
-        return res.status(400).send("Error registering user.");
+        return res.status(400).send({error: "Error in the request.", state: 1});
     }
     const { username, publicKey, timestamp } = body;
     try {
         const existingUser = await User.findOne({ username });
         if (existingUser) {
-            return res.status(400).send({ error: "User already exists." });
+            return res.status(400).send({ error: "User already exists.", state: 2 });
         }
 
         // Verify the public key
@@ -37,7 +37,7 @@ apiRouter.post("/register", async (req, res) => {
                 publicKey
             )
         ) {
-            return res.status(400).send({ error: "Error verifying signature" });
+            return res.status(400).send({ error: "Error verifying signature", state: 3 });
         }
 
         // Check if the timestamp is within a valid range (e.g., 5 minutes)
@@ -46,7 +46,7 @@ apiRouter.post("/register", async (req, res) => {
 
         if (timeDifference > 120) {
             // 2 minutes
-            return res.status(401).send({ error: "Signature expired." });
+            return res.status(401).send({ error: "Signature expired.", state: 4 });
         }
 
         // Save the public key to the database
@@ -54,10 +54,11 @@ apiRouter.post("/register", async (req, res) => {
         await newUser.save();
 
         // Return the private key to the user (to be stored locally)
-        res.status(201).json({ username });
+        res.status(201).json({ username, state: 0 });
     } catch (err) {
         res.status(500).send({
             error: "Error registering user.",
+            state: -1,
             msg: err.message,
         });
     }

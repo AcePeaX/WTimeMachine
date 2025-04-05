@@ -7,7 +7,9 @@ const Modal = ({ isOpen, onClose, children }) => {
     useEffect(() => {
         const handleOutsideClick = (e) => {
             if (modalRef.current && !modalRef.current.contains(e.target)) {
-                onClose();
+                if(typeof onClose === 'function') {
+                    onClose();
+                }
             }
         };
 
@@ -26,9 +28,9 @@ const Modal = ({ isOpen, onClose, children }) => {
     return (
         <div className="modal-overlay">
             <div className="modal-content" ref={modalRef}>
-                <button className="modal-close" onClick={onClose}>
+                {onClose ? <button className="modal-close" onClick={onClose}>
                     ×
-                </button>
+                </button> : null}
                 {children}
             </div>
         </div>

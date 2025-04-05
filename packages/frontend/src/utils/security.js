@@ -202,3 +202,49 @@ export function uint8ArrayToBase64(arr) {
 
 // Note: You must import/export/generate keys using window.crypto.subtle API
 // Keys should be imported/exported in JWK or SPKI/PKCS8 format depending on use-case
+
+// Password encryption
+
+export async function deriveAESKeyFromPassword(password, salt) {
+    const encoder = new TextEncoder();
+    const baseKey = await window.crypto.subtle.importKey(
+        "raw",
+        encoder.encode(password),
+        "PBKDF2",
+        false,
+        ["deriveBits"]
+    );
+
+    const bits = await window.crypto.subtle.deriveBits(
+        {
+            name: "PBKDF2",
+            salt: encoder.encode(salt),
+            iterations: 100_000,
+            hash: "SHA-256",
+        },
+        baseKey,
+        256
+    );
+
+    return new Uint8Array(bits); // AES key usable with aes-js
+}
+
+export async function encryptPrivateKeyWithPassword(privateKeyPEM, password) {
+    const salt = window.crypto.getRandomValues(new Uint8Array(16));
+    const aesKey = await deriveAESKeyFromPassword(
+        password,
+        uint8ArrayToBase64(salt)
+    );
+    const encrypted = encryptAES(privateKeyPEM, aesKey);
+
+    return {
+        salt: uint8ArrayToBase64(salt),
+        ciphertext: encrypted,
+    };
+}
+
+export async function decryptPrivateKeyWithPassword(encryptedData, password) {
+    const { salt, ciphertext } = encryptedData;
+    const aesKey = await deriveAESKeyFromPassword(password, salt);
+    return decryptAES(ciphertext, aesKey);
+}
