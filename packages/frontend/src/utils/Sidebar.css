@@ -1,16 +1,29 @@
-.sidebar {
-    width: 260px;
-    background-color: var(--bg);
-    color: var(--text);
+.app-layout {
+    display: flex;
     height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+}
+
+.sidebar {
+    width: 260px; /* or less if collapsed */
+    background-color: var(--bg);
+    transition: width 0.3s ease;
+    flex-shrink: 0;
     display: flex;
     flex-direction: column;
     border-right: 1px solid #e5e7eb;
-    transition: width 0.3s ease;
 }
 
 .sidebar.collapsed {
     width: 82px;
+}
+
+.main-content {
+    flex: 1;
+    overflow-y: auto;
+    background-color: var(--bg);
+    padding: 1rem;
 }
 
 .sidebar-header {
@@ -20,6 +33,7 @@
     padding: 1rem;
     border-bottom: 1px solid #e5e7eb;
 }
+
 
 .user-section {
     display: flex;

@@ -38,7 +38,7 @@ const Sidebar = () => {
             </div>
 
             <div className="sidebar-content">
-                <button className="sidebar-btn">
+                <button onClick={()=>{navigate("/add-conv")}} className="sidebar-btn">
                     <Plus size={18} />
                     {!collapsed && <span>New Conversation</span>}
                 </button>

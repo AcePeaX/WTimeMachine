@@ -6,6 +6,7 @@ import { loadSessionUser } from "./utils/users";
 import { useCallback, useEffect } from "react";
 //import Dashboard from "./pages/Dashboard";
 import Sidebar from "./utils/Sidebar";
+import AddConversation from "./pages/AddConversation";
 import "./App.css";
 
 //<Route path="/dashboard" element={<Dashboard />} />
@@ -21,6 +22,7 @@ function App() {
                             <Sidebar />
                             <div className="main-content">
                                 <Routes>
+                                    <Route path="/add-conv" element={<AddConversation />} />
                                     <Route path="*" element={<div>Page Not Found</div>} />
                                 </Routes>
                             </div>
@@ -40,7 +42,8 @@ const LoggedInVerifier = () => {
 
     const checkConnected = useCallback(() => {
         const user = loadSessionUser();
-        if (user && location.pathname === "/login") {
+        if (user && (location.pathname === "/login" || location.pathname === "/login/")) {
+          console.log("User is logged in, redirecting to dashboard");
             navigate("/dashboard");
         } else if (!user && location.pathname !== "/login") {
             setPreferredUrl(location.pathname);

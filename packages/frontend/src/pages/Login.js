@@ -187,7 +187,7 @@ export const Login = () => {
         const user = loadSessionUser();
         if (user) {
             const url = preferredUrl;
-            setPreferredUrl("dashboard");
+            setPreferredUrl("/dashboard");
             navigate(url); // Redirects without reload
         }
     }, [navigate, preferredUrl, setPreferredUrl]);
@@ -264,11 +264,6 @@ export const Login = () => {
         
         verifyLogin();
     }, [selectedUser, passwordInput, verifyLogin]);
-
-
-    useEffect(() => {
-        checkConnected();
-    }, [checkConnected]);
 
     useEffect(() => {
         if (selectedUser && !selectedUser.requirePass) {
