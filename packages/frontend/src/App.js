@@ -2,18 +2,31 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Login } from "./pages/Login";
 import { useApp } from "./utils/AppProvider";
-import "./App.css";
-
 import { loadSessionUser } from "./utils/users";
 import { useCallback, useEffect } from "react";
+//import Dashboard from "./pages/Dashboard";
+import Sidebar from "./utils/Sidebar";
+import "./App.css";
 
+//<Route path="/dashboard" element={<Dashboard />} />
 function App() {
     return (
         <Router>
             <Routes>
                 <Route path="/login" element={<Login />} />
-                <Route path="/dashboard" element={<></>} />
-                <Route path="*" element={<></>} />
+                <Route
+                    path="/*"
+                    element={
+                        <div className="app-layout">
+                            <Sidebar />
+                            <div className="main-content">
+                                <Routes>
+                                    <Route path="*" element={<div>Page Not Found</div>} />
+                                </Routes>
+                            </div>
+                        </div>
+                    }
+                />
             </Routes>
             <LoggedInVerifier />
         </Router>
@@ -23,16 +36,15 @@ function App() {
 const LoggedInVerifier = () => {
     const navigate = useNavigate();
     const location = useLocation();
-
     const { setPreferredUrl } = useApp();
 
     const checkConnected = useCallback(() => {
         const user = loadSessionUser();
         if (user && location.pathname === "/login") {
-            navigate("/dashboard"); // Redirects without reload
+            navigate("/dashboard");
         } else if (!user && location.pathname !== "/login") {
             setPreferredUrl(location.pathname);
-            navigate("/login"); // Redirects without reload
+            navigate("/login");
         }
     }, [location, navigate, setPreferredUrl]);
 
@@ -40,7 +52,7 @@ const LoggedInVerifier = () => {
         checkConnected();
     }, [checkConnected]);
 
-    return <></>;
+    return null;
 };
 
 export default App;

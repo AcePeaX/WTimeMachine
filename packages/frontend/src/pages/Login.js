@@ -21,14 +21,20 @@ import {
 import LockAnimation from "../assets/lottie-lock.json";
 import LockAnimationMask from "../assets/lottie-checkmark-mask.json";
 
-import { loadUsers, addUser, setSessionUser, loadSessionUser } from "../utils/users";
+import {
+    loadUsers,
+    addUser,
+    setSessionUser,
+    loadSessionUser,
+    saveUsers
+} from "../utils/users";
 
 import axios from "axios";
 
 export const Login = () => {
     const navigate = useNavigate();
 
-    const {preferredUrl, setPreferredUrl} = useApp();
+    const { preferredUrl, setPreferredUrl } = useApp();
 
     const [users, setUsers] = useState(loadUsers());
     const [selectedUser, setSelectedUser] = useState(null);
@@ -177,6 +183,75 @@ export const Login = () => {
         [users]
     );
 
+    const checkConnected = useCallback(() => {
+        const user = loadSessionUser();
+        if (user) {
+            const url = preferredUrl;
+            setPreferredUrl("dashboard");
+            navigate(url); // Redirects without reload
+        }
+    }, [navigate, preferredUrl, setPreferredUrl]);
+
+    const verifyLogin = useCallback(async () => {
+        let sign_privateKey = {};
+        try {
+            sign_privateKey = await importPrivateKeyFromPEM(
+                privateKeyPEMRef.current,
+                KEY_TYPE_SIGN
+            );
+        } catch (error) {
+            setLoginError("It seems like the password is incorrect.");
+            return;
+        }
+        const body = {
+            username: selectedUser.username,
+        };
+        axios
+            .post("/api/login", {
+                globalmessage: JSON.stringify(body),
+                signature: await signMessage(
+                    JSON.stringify(body),
+                    sign_privateKey
+                ),
+            })
+            .then((response) => {
+                setSessionUser(selectedUser.username, privateKeyPEMRef.current);
+
+                // Reorder users: move selected user to the top
+                const allUsers = loadUsers(); // get the full list
+                const reordered = [
+                    selectedUser,
+                    ...allUsers.filter(
+                        (u) => u.username !== selectedUser.username
+                    ),
+                ];
+                saveUsers(reordered); // save the reordered list
+
+                setSelectedUser(null);
+                setPasswordInput("");
+                setShowPasswordModal(false);
+                setLoginError("");
+                checkConnected();
+            })
+            .catch((error) => {
+                if (error.status === 401) {
+                    if (error.response.data.state === 1) {
+                        setLoginError("User not found.");
+                    } else if (error.response.data.state === 2) {
+                        setLoginError(
+                            "It seems like the password is incorrect."
+                        );
+                    } else if (error.response.data.state === 3) {
+                        setLoginError("Signature expired.");
+                    }
+                } else if (error.status === 500) {
+                    setLoginError("Server error.");
+                } else {
+                    setLoginError("Unknown error.");
+                }
+            });
+    }, [selectedUser, checkConnected]);
+
 
     const handlePasswordUnlock = useCallback(async () => {
         const result = await decryptPrivateKeyWithPassword(
@@ -186,85 +261,20 @@ export const Login = () => {
         publicKeyPEMRef.current = selectedUser.publicKey;
         privateKeyPEMRef.current = result;
 
-        verifyLogin();
-    }, [selectedUser, passwordInput]);
-
-
-    const verifyLogin = useCallback(async () => {
-        let sign_privateKey = {}
-        try{
-            sign_privateKey = await importPrivateKeyFromPEM(
-                privateKeyPEMRef.current,
-                KEY_TYPE_SIGN
-            );
-        }
-        catch (error) {
-            setLoginError("It seems like the password is incorrect.");
-            return 
-        }
-        const body = {
-            username: selectedUser.username,
-        }
-        axios
-        .post("/api/login", {
-            globalmessage: JSON.stringify(body),
-            signature: await signMessage(
-                JSON.stringify(body),
-                sign_privateKey
-            ),
-        })
-        .then((response) => {
-            setSessionUser(
-                selectedUser.username,
-                privateKeyPEMRef.current
-            );
-            setSelectedUser(null);
-            setPasswordInput("");
-            setShowPasswordModal(false);
-            setLoginError("");
-            checkConnected();
-        })
-        .catch((error) => {
-            if(error.status === 401) {
-                if(error.response.data.state=== 1) {
-                    setLoginError("User not found.");
-                }
-                else if(error.response.data.state === 2) {
-                    setLoginError("It seems like the password is incorrect.");
-                }
-                else if(error.response.data.state === 3) {
-                    setLoginError("Signature expired.");
-                }
-            }
-            else if(error.status === 500) {
-                setLoginError("Server error.");
-            }
-            else{
-                setLoginError("Unknown error.");
-            }
-        });
         
-    }, [selectedUser, privateKeyPEMRef.current]);
+        verifyLogin();
+    }, [selectedUser, passwordInput, verifyLogin]);
 
-    const checkConnected = useCallback(() => {
-        const user = loadSessionUser();
-        if (user) {
-            const url = preferredUrl
-            setPreferredUrl("dashboard")
-            navigate(url); // Redirects without reload
-        }
-    },[])
 
     useEffect(() => {
         checkConnected();
-    }
-    , [checkConnected]);
+    }, [checkConnected]);
 
     useEffect(() => {
-        if(selectedUser && !selectedUser.requirePass) {
+        if (selectedUser && !selectedUser.requirePass) {
             verifyLogin();
         }
-    },[selectedUser]);
+    }, [selectedUser, verifyLogin]);
 
     return (
         <div className="login-page">
