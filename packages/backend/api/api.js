@@ -17,6 +17,15 @@ apiRouter.post("/register", async (req, res) => {
         return res.status(400).send({error: "Error in the request.", state: 1});
     }
     const { username, publicKey, timestamp } = body;
+    const usernameRegex = /^[a-zA-Z0-9_]+$/;
+
+    if (!usernameRegex.test(username)) {
+        return res.status(400).send({
+            error: "Invalid username. Only letters (A-Z, a-z), digits (0-9), and underscores (_) are allowed.",
+            state: 5
+        });
+    }
+
     try {
         const existingUser = await User.findOne({ username });
         if (existingUser) {

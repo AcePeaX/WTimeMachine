@@ -11,6 +11,7 @@ import {
     signMessage,
     importPrivateKeyFromPEM,
     encryptPrivateKeyWithPassword,
+    decryptPrivateKeyWithPassword,
     KEY_TYPE_SIGN,
 } from "../utils/security"; // Adjust the import path as necessary
 
@@ -21,8 +22,16 @@ import { loadUsers, addUser } from "../utils/users";
 
 import axios from "axios";
 
-
 export const Login = () => {
+    const [users, setUsers] = useState(loadUsers());
+    const [selectedUser, setSelectedUser] = useState(null);
+    
+    const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [passwordInput, setPasswordInput] = useState("");
+    const [loginError, setLoginError] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
+    const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
+
     const [registerModelOpen, setRegisterModelOpen] = useState(false);
     const [username, setUsername] = useState("");
     const [errorMsg, setErrorMsg] = useState("");
@@ -34,8 +43,9 @@ export const Login = () => {
 
     const [securityConfirm, setSecurityConfirm] = useState(0);
 
-    const publicKeyPEMRef = useRef("")
-    const privateKeyPEMRef = useRef("")
+    const selectUser = useRef(null);
+    const publicKeyPEMRef = useRef("");
+    const privateKeyPEMRef = useRef("");
 
     const register = useCallback(() => {
         setRegisterModelOpen(true);
@@ -51,6 +61,7 @@ export const Login = () => {
             KEY_TYPE_SIGN
         );
 
+        console.log("Private Key:", privateKeyPEM);
 
         const body = {
             username,
@@ -70,7 +81,6 @@ export const Login = () => {
                 console.log("Response:", response.status);
                 if (response.status === 201) {
                     setErrorMsg("");
-                    setUsername("");
                     setRegisterModelOpen(false);
                     setSecureModalOpen(true);
                     publicKeyPEMRef.current = publicKeyPEM;
@@ -80,9 +90,7 @@ export const Login = () => {
             .catch((error) => {
                 console.log("Error:", error.status, error.response.data);
                 if (error.status === 400) {
-                    if (error.response.data.state === 2) {
-                        setErrorMsg("User already exists.");
-                    }
+                    setErrorMsg(error.response.data.error);
                 }
             });
     };
@@ -93,9 +101,10 @@ export const Login = () => {
         setPassword("");
         setConfirmPassword("");
         setSecureError("");
+        setUsername("");
     }, []);
 
-    const handleSecureAccount = async() => {
+    const handleSecureAccount = async () => {
         if (securityConfirm === 1) {
             setSecurityConfirm(0);
             return;
@@ -118,6 +127,8 @@ export const Login = () => {
             requirePass: true,
         });
 
+        setUsers(loadUsers());
+
         // Proceed to hash, encrypt, or store the password securely
         setSecurityConfirm(2);
     };
@@ -133,8 +144,40 @@ export const Login = () => {
             privateKey: privateKeyPEMRef.current,
             requirePass: false,
         });
+        setUsers(loadUsers());
         cleanUpSecureModal();
     };
+
+    const handleLogin = useCallback(
+        (e) => {
+            e.preventDefault();
+            const selectedAccount = selectUser.current.value;
+            const user = users.find(
+                (user) => user.username === selectedAccount
+            );
+
+            console.log(user);
+
+            if (user) {
+                if (user.requirePass) {
+                    setShowPasswordModal(true);
+                    setSelectedUser(user);
+                    // Handle password prompt
+                    // You can implement a password prompt here
+                } else {
+                    // Proceed with login
+                    // For example, redirect to the main application page
+                }
+            }
+        },
+        [users]
+    );
+
+    const handlePasswordUnlock = useCallback(async() => {
+        console.log(passwordInput);
+        const result = await decryptPrivateKeyWithPassword(selectedUser.encryptedPrivateKey, "9a2813jdzA21_" + passwordInput)
+        console.log(result);
+    },[selectedUser, passwordInput]);
 
     return (
         <div className="login-page">
@@ -150,11 +193,18 @@ export const Login = () => {
 
                 <div className="form">
                     <label htmlFor="account-select">Select an account</label>
-                    <select id="account-select">
+                    <select ref={selectUser} id="account-select">
                         <option>Select an account</option>
+                        {users.map((user, index) => (
+                            <option key={index} value={user.username}>
+                                {user.username} {user.requirePass ? "🛡️" : ""}
+                            </option>
+                        ))}
                     </select>
 
-                    <button className="btn connect">Connect</button>
+                    <button onClick={handleLogin} className="btn connect">
+                        Connect
+                    </button>
 
                     <div className="actions">
                         <button className="btn secondary">
@@ -192,8 +242,8 @@ export const Login = () => {
                 onClose={
                     securityConfirm === 2
                         ? () => {
-                                cleanUpSecureModal();
-                            }
+                              cleanUpSecureModal();
+                          }
                         : undefined
                 }
             >
@@ -206,43 +256,55 @@ export const Login = () => {
                     }}
                 >
                     {securityConfirm === 2 ? (
-                        <div
-                            style={{
-                                position: "relative",
-                                width: "70%",
-                                margin: "0 auto",
-                            }}
-                        >
+                        <div className="secure-account-container">
                             <div
-                                className="lock-animation lock-animation-1"
                                 style={{
-                                    position: "absolute",
-                                    top: 0,
-                                    left: 0,
-                                    width: "100%",
+                                    position: "relative",
+                                    width: "70%",
+                                    margin: "0 auto",
+                                    height: "210px",
                                 }}
                             >
-                                <Lottie
-                                    animationData={LockAnimation}
-                                    loop={false}
-                                    style={{ width: "100%", height: "auto" }}
-                                />
-                            </div>
+                                <div
+                                    className="lock-animation lock-animation-1"
+                                    style={{
+                                        position: "absolute",
+                                        top: 0,
+                                        left: 0,
+                                        width: "100%",
+                                    }}
+                                >
+                                    <Lottie
+                                        animationData={LockAnimation}
+                                        loop={false}
+                                        style={{
+                                            width: "100%",
+                                            height: "auto",
+                                        }}
+                                    />
+                                </div>
 
-                            <div
-                                className="lock-animation lock-animation-2"
-                                style={{
-                                    position: "absolute",
-                                    top: 0,
-                                    left: 0,
-                                    width: "100%",
-                                }}
-                            >
-                                <Lottie
-                                    animationData={LockAnimationMask}
-                                    loop={false}
-                                    style={{ width: "100%", height: "auto" }}
-                                />
+                                <div
+                                    className="lock-animation lock-animation-2"
+                                    style={{
+                                        position: "absolute",
+                                        top: 0,
+                                        left: 0,
+                                        width: "100%",
+                                    }}
+                                >
+                                    <Lottie
+                                        animationData={LockAnimationMask}
+                                        loop={false}
+                                        style={{
+                                            width: "100%",
+                                            height: "auto",
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                            <div className="label_account_secured">
+                                Account Secured
                             </div>
                         </div>
                     ) : (
@@ -319,6 +381,45 @@ export const Login = () => {
                             </div>
                         </>
                     )}
+                </div>
+            </Modal>
+            <Modal
+                isOpen={
+                    !!selectedUser &&
+                    selectedUser.requirePass &&
+                    showPasswordModal
+                }
+                onClose={() => {
+                    setShowPasswordModal(false);
+                    setPasswordInput("");
+                    setLoginError("");
+                }}
+            >
+                <div className="password-modal">
+                    <h2>
+                        Unlock Account: <i>{selectedUser?.username}</i>{" "}
+                        {selectedUser?.requirePass && "🛡️"}
+                    </h2>
+
+                    {loginError && (
+                        <p className="error-message">{loginError}</p>
+                    )}
+
+                    <input
+                        type="password"
+                        placeholder="Enter password"
+                        value={passwordInput}
+                        onChange={(e) => setPasswordInput(e.target.value)}
+                        className="modal-input"
+                    />
+
+                    <button
+                        className="btn primary confirm"
+                        disabled={!passwordInput || passwordInput.length < 4}
+                        onClick={handlePasswordUnlock}
+                    >
+                        Unlock
+                    </button>
                 </div>
             </Modal>
         </div>

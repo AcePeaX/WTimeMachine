@@ -4,9 +4,10 @@
   "description": "An app to inspect lost conversations in WhatsApp",
   "main": "app.js",
   "scripts": {
+    "dev:bakend": "npm run dev --workspace=backend",
     "start:backend": "npm run start --workspace=backend",
-    "dev:backend": "npm run dev --workspace=backend",
     "start:frontend": "npm run start --workspace=frontend",
+    "dev:backend": "npm run dev --workspace=backend",
     "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\""
   },
   "author": "AcePeaX",
@@ -17,6 +18,7 @@
     "packages/frontend"
   ],
   "devDependencies": {
+    "concurrently": "^9.1.2",
     "nodemon": "^3.1.9"
   },
   "dependencies": {

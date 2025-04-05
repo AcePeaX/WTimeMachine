@@ -4,12 +4,18 @@ import AES from "aes-js";
 
 // --- AES ---
 
-export function encryptAES(message, key) {
-    const textBytes = AES.utils.utf8.toBytes(message);
+export function encryptAES(input, key) {
+    const bytes = input instanceof Uint8Array
+        ? input
+        : AES.utils.utf8.toBytes(input); // fallback only if string
+
     const aesCtr = new AES.ModeOfOperation.ctr(key, new AES.Counter(5));
-    const encryptedBytes = aesCtr.encrypt(textBytes);
+    const encryptedBytes = aesCtr.encrypt(bytes);
+
+    // Return base64 directly
     return AES.utils.hex.fromBytes(encryptedBytes);
 }
+
 
 export function decryptAES(encryptedHex, key) {
     const encryptedBytes = AES.utils.hex.toBytes(encryptedHex);
@@ -229,22 +235,65 @@ export async function deriveAESKeyFromPassword(password, salt) {
     return new Uint8Array(bits); // AES key usable with aes-js
 }
 
+const hexToBase64 = (hex) => {
+    const arr = new Uint8Array(hex.match(/.{1,2}/g).map(b => parseInt(b, 16)));
+    return btoa(String.fromCharCode(...arr));
+}
+
+
 export async function encryptPrivateKeyWithPassword(privateKeyPEM, password) {
+    console.log("Encrypting private key with password:", password);
+
+    // 1. Strip header/footer and whitespace
+    const strippedBase64 = privateKeyPEM
+        .replace(/-----BEGIN PRIVATE KEY-----/, "")
+        .replace(/-----END PRIVATE KEY-----/, "")
+        .replace(/\s+/g, "");
+
+    // 2. Convert base64 → binary
+    const binary = Uint8Array.from(atob(strippedBase64), c => c.charCodeAt(0));
+
+    // 3. Derive AES key
     const salt = window.crypto.getRandomValues(new Uint8Array(16));
     const aesKey = await deriveAESKeyFromPassword(
         password,
         uint8ArrayToBase64(salt)
     );
-    const encrypted = encryptAES(privateKeyPEM, aesKey);
+
+    // 4. Encrypt binary → encrypted binary → base64
+    const encrypted = encryptAES(binary, aesKey);
+    console.log(encrypted.length)
+    const encryptedBase64 = hexToBase64(encrypted); // encryptAES already returns base64
+    console.log(strippedBase64.length, encrypted.length, encryptedBase64.length)
 
     return {
         salt: uint8ArrayToBase64(salt),
-        ciphertext: encrypted,
+        ciphertext: encryptedBase64,
     };
 }
 
+
 export async function decryptPrivateKeyWithPassword(encryptedData, password) {
+    console.log("Decrypting private key with password:", password);
     const { salt, ciphertext } = encryptedData;
+
+    // 1. Derive AES key
     const aesKey = await deriveAESKeyFromPassword(password, salt);
-    return decryptAES(ciphertext, aesKey);
+
+    // 2. Decrypt → binary
+    const decryptedBytes = Uint8Array.from(atob(ciphertext), c => c.charCodeAt(0));
+    const aesCtr = new AES.ModeOfOperation.ctr(aesKey, new AES.Counter(5));
+    const decryptedBinary = aesCtr.decrypt(decryptedBytes);
+
+    // 3. Convert binary → base64
+    const recoveredBase64 = btoa(String.fromCharCode(...decryptedBinary));
+
+    // 4. Re-wrap into PEM format
+    const pem =
+        "-----BEGIN PRIVATE KEY-----\n" +
+        recoveredBase64.match(/.{1,64}/g).join("\n") +
+        "\n-----END PRIVATE KEY-----";
+
+    return pem;
 }
+
