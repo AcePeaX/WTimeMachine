@@ -1,7 +1,10 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./Login.css"; // Optional for styling
 import Lottie from "lottie-react";
 import logo from "../logo.svg"; // replace with your actual logo path
+
+import { useApp } from "../utils/AppProvider";
 
 import Modal from "../utils/Modal";
 import {
@@ -18,19 +21,21 @@ import {
 import LockAnimation from "../assets/lottie-lock.json";
 import LockAnimationMask from "../assets/lottie-checkmark-mask.json";
 
-import { loadUsers, addUser } from "../utils/users";
+import { loadUsers, addUser, setSessionUser, loadSessionUser } from "../utils/users";
 
 import axios from "axios";
 
 export const Login = () => {
+    const navigate = useNavigate();
+
+    const {preferredUrl, setPreferredUrl} = useApp();
+
     const [users, setUsers] = useState(loadUsers());
     const [selectedUser, setSelectedUser] = useState(null);
-    
+
     const [showPasswordModal, setShowPasswordModal] = useState(false);
     const [passwordInput, setPasswordInput] = useState("");
     const [loginError, setLoginError] = useState("");
-    const [showPassword, setShowPassword] = useState(false);
-    const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
 
     const [registerModelOpen, setRegisterModelOpen] = useState(false);
     const [username, setUsername] = useState("");
@@ -61,8 +66,6 @@ export const Login = () => {
             KEY_TYPE_SIGN
         );
 
-        console.log("Private Key:", privateKeyPEM);
-
         const body = {
             username,
             publicKey: publicKeyPEM,
@@ -78,7 +81,6 @@ export const Login = () => {
                 ),
             })
             .then((response) => {
-                console.log("Response:", response.status);
                 if (response.status === 201) {
                     setErrorMsg("");
                     setRegisterModelOpen(false);
@@ -88,7 +90,6 @@ export const Login = () => {
                 }
             })
             .catch((error) => {
-                console.log("Error:", error.status, error.response.data);
                 if (error.status === 400) {
                     setErrorMsg(error.response.data.error);
                 }
@@ -102,6 +103,8 @@ export const Login = () => {
         setConfirmPassword("");
         setSecureError("");
         setUsername("");
+        publicKeyPEMRef.current = "";
+        privateKeyPEMRef.current = "";
     }, []);
 
     const handleSecureAccount = async () => {
@@ -156,8 +159,6 @@ export const Login = () => {
                 (user) => user.username === selectedAccount
             );
 
-            console.log(user);
-
             if (user) {
                 if (user.requirePass) {
                     setShowPasswordModal(true);
@@ -167,17 +168,103 @@ export const Login = () => {
                 } else {
                     // Proceed with login
                     // For example, redirect to the main application page
+                    setSelectedUser(user);
+                    publicKeyPEMRef.current = user.publicKey;
+                    privateKeyPEMRef.current = user.privateKey;
                 }
             }
         },
         [users]
     );
 
-    const handlePasswordUnlock = useCallback(async() => {
-        console.log(passwordInput);
-        const result = await decryptPrivateKeyWithPassword(selectedUser.encryptedPrivateKey, "9a2813jdzA21_" + passwordInput)
-        console.log(result);
-    },[selectedUser, passwordInput]);
+
+    const handlePasswordUnlock = useCallback(async () => {
+        const result = await decryptPrivateKeyWithPassword(
+            selectedUser.encryptedPrivateKey,
+            "9a2813jdzA21_" + passwordInput
+        );
+        publicKeyPEMRef.current = selectedUser.publicKey;
+        privateKeyPEMRef.current = result;
+
+        verifyLogin();
+    }, [selectedUser, passwordInput]);
+
+
+    const verifyLogin = useCallback(async () => {
+        let sign_privateKey = {}
+        try{
+            sign_privateKey = await importPrivateKeyFromPEM(
+                privateKeyPEMRef.current,
+                KEY_TYPE_SIGN
+            );
+        }
+        catch (error) {
+            setLoginError("It seems like the password is incorrect.");
+            return 
+        }
+        const body = {
+            username: selectedUser.username,
+        }
+        axios
+        .post("/api/login", {
+            globalmessage: JSON.stringify(body),
+            signature: await signMessage(
+                JSON.stringify(body),
+                sign_privateKey
+            ),
+        })
+        .then((response) => {
+            setSessionUser(
+                selectedUser.username,
+                privateKeyPEMRef.current
+            );
+            setSelectedUser(null);
+            setPasswordInput("");
+            setShowPasswordModal(false);
+            setLoginError("");
+            checkConnected();
+        })
+        .catch((error) => {
+            if(error.status === 401) {
+                if(error.response.data.state=== 1) {
+                    setLoginError("User not found.");
+                }
+                else if(error.response.data.state === 2) {
+                    setLoginError("It seems like the password is incorrect.");
+                }
+                else if(error.response.data.state === 3) {
+                    setLoginError("Signature expired.");
+                }
+            }
+            else if(error.status === 500) {
+                setLoginError("Server error.");
+            }
+            else{
+                setLoginError("Unknown error.");
+            }
+        });
+        
+    }, [selectedUser, privateKeyPEMRef.current]);
+
+    const checkConnected = useCallback(() => {
+        const user = loadSessionUser();
+        if (user) {
+            const url = preferredUrl
+            setPreferredUrl("dashboard")
+            navigate(url); // Redirects without reload
+        }
+    },[])
+
+    useEffect(() => {
+        checkConnected();
+    }
+    , [checkConnected]);
+
+    useEffect(() => {
+        if(selectedUser && !selectedUser.requirePass) {
+            verifyLogin();
+        }
+    },[selectedUser]);
 
     return (
         <div className="login-page">

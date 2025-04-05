@@ -242,7 +242,6 @@ const hexToBase64 = (hex) => {
 
 
 export async function encryptPrivateKeyWithPassword(privateKeyPEM, password) {
-    console.log("Encrypting private key with password:", password);
 
     // 1. Strip header/footer and whitespace
     const strippedBase64 = privateKeyPEM
@@ -262,9 +261,7 @@ export async function encryptPrivateKeyWithPassword(privateKeyPEM, password) {
 
     // 4. Encrypt binary → encrypted binary → base64
     const encrypted = encryptAES(binary, aesKey);
-    console.log(encrypted.length)
     const encryptedBase64 = hexToBase64(encrypted); // encryptAES already returns base64
-    console.log(strippedBase64.length, encrypted.length, encryptedBase64.length)
 
     return {
         salt: uint8ArrayToBase64(salt),
@@ -274,7 +271,6 @@ export async function encryptPrivateKeyWithPassword(privateKeyPEM, password) {
 
 
 export async function decryptPrivateKeyWithPassword(encryptedData, password) {
-    console.log("Decrypting private key with password:", password);
     const { salt, ciphertext } = encryptedData;
 
     // 1. Derive AES key

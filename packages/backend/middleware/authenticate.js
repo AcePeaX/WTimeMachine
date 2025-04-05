@@ -14,13 +14,13 @@ export async function authenticate(req, res, next) {
       // Find the user in the database
       const user = await User.findOne({ username });
       if (!user) {
-        return res.status(401).send({ error: 'User not found.' });
+        return res.status(401).send({ error: 'User not found.', state: 1 });
       }
 
       // Verify the signature using the user's public key
       const verified = verifyMessage(globalmessage, signature, user.publicKey);
       if (!verified) {
-        return res.status(401).send({ error: 'Invalid signature.' });
+        return res.status(401).send({ error: 'Invalid signature.', state: 2 });
       }
   
       // Check if the timestamp is within a valid range (e.g., 5 minutes)
@@ -28,7 +28,7 @@ export async function authenticate(req, res, next) {
       const timeDifference = currentTime - parseInt(timestamp, 10);
   
       if (timeDifference > 120) { // 2 minutes
-        return res.status(401).send({ error: 'Signature expired.' });
+        return res.status(401).send({ error: 'Signature expired.', state: 3 });
       }
   
       // Attach the user to the request object
@@ -42,6 +42,6 @@ export async function authenticate(req, res, next) {
   
       next();
     } catch (err) {
-      res.status(500).send({ error: 'Error authenticating user.' });
+      res.status(500).send({ error: 'Error authenticating user.', state: -1 });
     }
   }
