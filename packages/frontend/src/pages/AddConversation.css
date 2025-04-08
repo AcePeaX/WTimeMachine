@@ -21,6 +21,8 @@ h1 {
 }
 
 .text-input {
+    background-color: var(--bg-light);
+    color: var(--text);
     width: 100%;
     padding: 0.6rem;
     border: 1px solid #d1d5db;
