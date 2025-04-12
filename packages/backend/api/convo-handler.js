@@ -62,14 +62,15 @@ export const addConvo = async (req, res) => {
         });
 
         console.log("✅ Conversation created:", convo._id);
-        return convo;
+        res.status(201).json({
+            convoId: convo._id,
+            state: 0,
+        });
     } catch (err) {
-        console.error("❌ Error creating conversation:", err);
-        throw err;
+        res.status(500).send({
+            error: "Error creating conversation.",
+            state: -1,
+            msg: err.message,
+        });
     }
-
-    res.status(501).send({
-        error: "Not yet implemented.",
-        state: -1,
-    });
 };

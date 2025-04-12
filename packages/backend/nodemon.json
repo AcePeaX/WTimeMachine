@@ -1,5 +1,5 @@
 {
-    "watch": ["../security","../utils", "./"],
+    "watch": ["../security","../utils", "./", "../../.env"],
     "ext": "js,json",
     "ignore": ["node_modules"]
 }

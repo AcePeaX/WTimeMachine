@@ -20,6 +20,8 @@
   ],
   "devDependencies": {
     "concurrently": "^9.1.2",
+    "eslint": "^8.57.1",
+    "eslint-plugin-no-only-tests": "^3.3.0",
     "nodemon": "^3.1.9"
   },
   "dependencies": {
