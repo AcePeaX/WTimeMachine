@@ -13,8 +13,9 @@ dotenv.config({ path: '../../.env' });
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+
 // Connect to MongoDB
-mongoose.connect('mongodb://root:example_password@localhost:27017/time-machine?authSource=admin');
+mongoose.connect(`mongodb://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@localhost:27017/${process.env.DB_NAME}?authSource=admin`);
 
 const db = mongoose.connection;
 db.on('error', console.error.bind(console, 'connection error:'));

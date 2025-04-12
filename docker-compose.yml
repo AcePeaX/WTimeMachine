@@ -4,11 +4,11 @@ services:
     container_name: mongo-timemach
     ports:
       - "27017:27017"
-    #volumes:
-    #  - mongo-data:/data/db
+    volumes:
+      - mongo-data:/data/db
     environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: example_password
+      MONGO_INITDB_ROOT_USERNAME: ${DB_USERNAME:-root}
+      MONGO_INITDB_ROOT_PASSWORD: ${DB_PASSWORD:-example_password}
   
   mongo-express:
     image: mongo-express
@@ -17,8 +17,8 @@ services:
     environment:
       - ME_CONFIG_MONGODB_SERVER=mongo
       - ME_CONFIG_MONGODB_PORT=27017
-      - ME_CONFIG_MONGODB_ADMINUSERNAME=root
-      - ME_CONFIG_MONGODB_ADMINPASSWORD=example_password
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=${DB_USERNAME:-root}
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=${DB_PASSWORD:-example_password}
 
-#volumes:
-#  mongo-data:
+volumes:
+  mongo-data:
