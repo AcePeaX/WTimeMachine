@@ -14,9 +14,9 @@ const GrantBundleSchema = new mongoose.Schema({
     convoId: { type: String, required: true, index: true },
     grantee: { type: String, required: true, index: true },
 
-    isAdmin: { type: Boolean, default: false }, // ✅ NEW field
+    isAdmin: { type: Boolean, default: false },
 
-    // Map of grants by key like "chunk-000042.01.02.05"
+    // Map of grants by key like "chunk-000042.01.02.05" or "all"
     grants: {
         type: Map,
         of: GrantEntrySchema,
@@ -42,6 +42,8 @@ GrantBundleSchema.pre("validate", function (next) {
     const grantKeys = Array.from(this.grants?.keys?.() || []);
 
     for (const key of grantKeys) {
+        if (key === "all") continue; // Allow "all" as a valid universal grant key
+
         const [level, pathStr] = key.split("-");
         if (!LEVELS.includes(level)) {
             return next(
@@ -77,4 +79,4 @@ GrantBundleSchema.pre("validate", function (next) {
     next();
 });
 
-export default mongoose.model("UserGrantBundle", GrantBundleSchema);
+export const Grant = mongoose.model("UserGrantBundle", GrantBundleSchema);

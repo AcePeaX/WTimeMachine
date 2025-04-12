@@ -40,10 +40,6 @@ const ConvoSchema = new mongoose.Schema({
         type: Number,
         default: 256,
     },
-    encryptedAesConvoKey: {
-        type: String,
-        required: true
-    },
     // 🔐 Admins and participants
     adminUsers: {
         type: [String],

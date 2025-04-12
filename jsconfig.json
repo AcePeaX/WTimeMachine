@@ -2,7 +2,8 @@
     "compilerOptions": {
       "baseUrl": ".",
       "paths": {
-        "@timemachine/security": ["packages/security"]
+        "@timemachine/security": ["packages/security"],
+        "@timemachine/utils": ["packages/utils"]
       }
     }
 }

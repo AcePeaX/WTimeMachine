@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import "./AddConversation.css";
 import secureAxios from "../utils/secure-axios";
 import { Upload, Info } from "lucide-react";
@@ -11,6 +11,7 @@ import {
     uint8ArrayToBase64,
 } from "../utils/security";
 import { loadSessionUser } from "../utils/users";
+import { QuickModal } from "../utils/Modal";
 
 export function hslToHex(h, s, l) {
     s /= 100;
@@ -47,6 +48,8 @@ const AddConversation = () => {
     const [color, setColor] = useState("#7C3AED");
     const [aesSize, setAESSize] = useState("256");
 
+    const confirmModal = useRef(null);
+
     const [erros, setErrors] = useState({});
 
     const handleFileChange = (e) => {
@@ -62,7 +65,7 @@ const AddConversation = () => {
 
     const handleDragOver = (e) => e.preventDefault();
 
-    const handleSubmit = async () => {
+    const handleSubmit = async (e, force=false) => {
         if (!conversationName) return;
 
         const user = loadSessionUser();
@@ -85,6 +88,7 @@ const AddConversation = () => {
                 color,
                 aesSize: parseInt(aesSize),
                 encryptedAesConvoKey: encryptedAesKeyString,
+                force: force
             })
             .then((response) => {
                 console.log("Conversation created:", response.data);
@@ -93,8 +97,12 @@ const AddConversation = () => {
             .catch((error) => {
                 console.error("Error creating conversation:", error);
                 setErrors(error.response.data.errors || {});
+                if(error.response.data.state === 2) {
+                    confirmModal.current.open()
+                }
             });
     };
+
 
     useEffect(() => {
         setColor(generateHSLColorFromText(Date.now() + ""));
@@ -206,6 +214,10 @@ const AddConversation = () => {
                     a confirmed breach occurs.
                 </p>
             </div>
+            <QuickModal ref={confirmModal} onConfirm={()=>{handleSubmit(null, true)}}>
+                <h2>Are you sure?</h2>
+                <center>A conversation with this name does already exist in your account</center>
+            </QuickModal>
         </div>
     );
 };

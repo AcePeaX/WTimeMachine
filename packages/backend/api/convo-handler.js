@@ -1,4 +1,5 @@
 import { Convo } from "../models/Convo.js";
+import { Grant } from "../models/Grant.js";
 
 import { validateRequest } from "@timemachine/utils";
 
@@ -20,8 +21,8 @@ export const addConvo = async (req, res) => {
     const { convo } = req.body;
 
     const title = req.body.title;
+    const force = req.body.force;
     const username = req.user.username;
-    const force = req.user.force;
 
     if (!force) {
         const similarConvo = await Convo.findOne({
@@ -46,8 +47,18 @@ export const addConvo = async (req, res) => {
             adminUsers: [username],
             createdBy: username,
             aesSize: req.body.aesSize,
-            encryptedAesConvoKey: req.body.encryptedAesConvoKey,
             color: req.body.color,
+        });
+        
+        const grant = await Grant.create({
+            grantee: username,
+            convoId: convo._id,
+            isAdmin: true,
+            grants: {
+                'all': {
+                    encryptedDerivedKey: req.body.encryptedAesConvoKey,
+                }
+            }
         });
 
         console.log("✅ Conversation created:", convo._id);

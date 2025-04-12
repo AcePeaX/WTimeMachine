@@ -29,7 +29,15 @@ secureAxios.interceptors.request.use(async (config) => {
 
         data.username = user.username;
 
-        const str_data = JSON.stringify(data)
+        let str_data;
+        try{
+            str_data = JSON.stringify(data)
+        }
+        catch (e){
+            console.error("Failed to stringify data:", e, data);
+            return config;
+        }
+        
 
         const signature = await signMessage(
             str_data,

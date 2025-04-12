@@ -9,9 +9,26 @@ const MediaSchema = new mongoose.Schema({
         index: true,
     },
 
-    // Encrypted media blob (binary)
+    // 'inline' = stored directly, 'external' = stored on a remote drive
+    storageType: {
+        type: String,
+        enum: ["inline", "external"],
+        default: "inline",
+    },
+
+    // Encrypted media blob (only if inline)
     data: {
         type: Buffer,
+    },
+
+    // External location (e.g., URL or Drive ID, only if external)
+    location: {
+        type: String,
+    },
+
+    // Encrypted AES key (common to both)
+    encryptedKey: {
+        type: String,
         required: true,
     },
 
@@ -39,4 +56,15 @@ const MediaSchema = new mongoose.Schema({
     },
 });
 
-export default mongoose.model("Media", MediaSchema);
+// Ensure consistency depending on storage type
+MediaSchema.pre("validate", function (next) {
+    if (this.storageType === "inline" && !this.data) {
+        return next(new Error("Inline media must include data."));
+    }
+    if (this.storageType === "external" && !this.location) {
+        return next(new Error("External media must include location."));
+    }
+    next();
+});
+
+export const Media =  mongoose.model("Media", MediaSchema);
