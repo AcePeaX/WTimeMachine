@@ -49,36 +49,46 @@ secureAxios.interceptors.request.use(async (config) => {
 });
 
 // Add response interceptor
+async function tryDecryptResponseData(data, user) {
+    if (!user || !user.privateKey || !data?.key || !data?.encryptedMessage) return null;
+
+    try {
+        const privateKey = await importPrivateKeyFromPEM(user.privateKey, KEY_TYPE_ENCRYPT);
+        const decrypted = await decryptRequestData(data.key, data.encryptedMessage, privateKey);
+        return decrypted;
+    } catch (err) {
+        console.error("Decryption failed:", err);
+        return null;
+    }
+}
+
 secureAxios.interceptors.response.use(
     async (response) => {
         const user = loadSessionUser();
-        if (!user || !user.privateKey) {
-            return response; // fallback if no key
-        }
+        const decrypted = await tryDecryptResponseData(response.data, user);
 
-        try {
-            const privateKey = await importPrivateKeyFromPEM(
-                user.privateKey,
-                KEY_TYPE_ENCRYPT
-            );
-            const { key, encryptedMessage } = response.data;
-            const decrypted = await decryptRequestData(
-                key,
-                encryptedMessage,
-                privateKey
-            );
-
+        if (decrypted) {
             return {
                 ...response,
                 data: decrypted,
             };
-        } catch (err) {
-            console.error("Decryption error:", err);
-            return response; // fallback to raw data if decryption fails
         }
+
+        return response;
     },
-    (error) => Promise.reject(error)
+
+    async (error) => {
+        const user = loadSessionUser();
+        const decrypted = await tryDecryptResponseData(error.response?.data, user);
+
+        if (decrypted) {
+            error.response.data = decrypted;
+        }
+
+        return Promise.reject(error);
+    }
 );
+
 
 
 export default secureAxios;

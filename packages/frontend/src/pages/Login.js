@@ -215,7 +215,7 @@ export const Login = () => {
                 ),
             })
             .then((response) => {
-                setSessionUser(selectedUser.username, privateKeyPEMRef.current);
+                setSessionUser(selectedUser.username, privateKeyPEMRef.current, publicKeyPEMRef.current);
 
                 // Reorder users: move selected user to the top
                 const allUsers = loadUsers(); // get the full list

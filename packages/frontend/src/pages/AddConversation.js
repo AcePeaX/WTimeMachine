@@ -2,6 +2,15 @@ import React, { useEffect, useState } from "react";
 import "./AddConversation.css";
 import secureAxios from "../utils/secure-axios";
 import { Upload, Info } from "lucide-react";
+import {
+    generateAESKey,
+    exportAESKeyToBase64,
+    encryptAESKey,
+    importPublicKeyFromPEM,
+    base64ToUint8Array,
+    uint8ArrayToBase64,
+} from "../utils/security";
+import { loadSessionUser } from "../utils/users";
 
 export function hslToHex(h, s, l) {
     s /= 100;
@@ -27,7 +36,7 @@ export function generateHSLColorFromText(text) {
         hash = text.charCodeAt(i) + ((hash << 5) - hash);
     }
     let hue = hash % 360;
-    if(hue < 0) hue = hue + 360;
+    if (hue < 0) hue = hue + 360;
     return hslToHex(hue, 70, 80); // pastel-like
 }
 
@@ -37,6 +46,8 @@ const AddConversation = () => {
     const [uploadedFile, setUploadedFile] = useState(null);
     const [color, setColor] = useState("#7C3AED");
     const [aesSize, setAESSize] = useState("256");
+
+    const [erros, setErrors] = useState({});
 
     const handleFileChange = (e) => {
         const file = e.target.files[0];
@@ -51,40 +62,50 @@ const AddConversation = () => {
 
     const handleDragOver = (e) => e.preventDefault();
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         if (!conversationName) return;
-        console.log("New conversation:", {
-            name: conversationName,
-            description,
-            file: uploadedFile,
-            color,
-            aesSize,
-        });
 
-        secureAxios.post("/api/user", {
-            name: conversationName,
-            description,
-            color,
-            aesSize,
-        })
-        .then((response) => {
-            console.log("Conversation created:", response.data);
-            // Handle successful conversation creation
-        })
-        .catch((error) => {
-            console.error("Error creating conversation:", error);
-            // Handle error in conversation creation
-        }
+        const user = loadSessionUser();
+        const publicKey = await importPublicKeyFromPEM(user.publicKey);
+
+        const aesKey = await generateAESKey(parseInt(aesSize));
+        const aesKeyString = await exportAESKeyToBase64(aesKey);
+        console.log(aesKeyString)
+
+        const encryptedAesKey = await encryptAESKey(
+            base64ToUint8Array(aesKeyString),
+            publicKey
         );
+        const encryptedAesKeyString = uint8ArrayToBase64(encryptedAesKey)
+
+        secureAxios
+            .post("/api/add-convo", {
+                title: conversationName.trim(),
+                description,
+                color,
+                aesSize: parseInt(aesSize),
+                encryptedAesConvoKey: encryptedAesKeyString,
+            })
+            .then((response) => {
+                console.log("Conversation created:", response.data);
+                // Handle successful conversation creation
+            })
+            .catch((error) => {
+                console.error("Error creating conversation:", error);
+                setErrors(error.response.data.errors || {});
+            });
     };
 
-    useEffect(() => {setColor(generateHSLColorFromText(Date.now()+""))}, [setColor]);
+    useEffect(() => {
+        setColor(generateHSLColorFromText(Date.now() + ""));
+    }, [setColor]);
 
     return (
         <div className="add-convo-page">
             <h1>Add a New Conversation</h1>
 
             <label className="form-label">Conversation Name</label>
+            <span className="error-span">{erros["title"]}</span>
             <input
                 type="text"
                 className="text-input"
@@ -96,6 +117,7 @@ const AddConversation = () => {
             />
 
             <label className="form-label">Description (Optional)</label>
+            <span className="error-span">{erros["description"]}</span>
             <input
                 type="text"
                 className="text-input"
@@ -127,6 +149,7 @@ const AddConversation = () => {
             </div>
 
             <label className="form-label">Color Label</label>
+            <span className="error-span">{erros["color"]}</span>
             <input
                 type="color"
                 className="color-input"
@@ -137,6 +160,7 @@ const AddConversation = () => {
             />
 
             <label className="form-label">AES Encryption Key Size</label>
+            <span className="error-span">{erros["aesSize"]}</span>
             <select
                 className="text-input"
                 value={aesSize}

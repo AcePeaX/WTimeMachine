@@ -1,0 +1,5 @@
+{
+    "watch": ["../security","../utils", "./"],
+    "ext": "js,json",
+    "ignore": ["node_modules"]
+}

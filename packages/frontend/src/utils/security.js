@@ -26,19 +26,19 @@ export function decryptAES(encryptedHex, key) {
 
 // --- RSA KEY ENCRYPTION ---
 
-export async function encryptAESKey(aesKey, publicKey) {
+export async function encryptAESKey(data, publicKey) {
     return await window.crypto.subtle.encrypt(
         { name: "RSA-OAEP" },
         publicKey,
-        aesKey
+        data
     );
 }
 
-export async function decryptAESKey(encryptedAESKey, privateKey) {
+export async function decryptAESKey(enc_data, privateKey) {
     return await window.crypto.subtle.decrypt(
         { name: "RSA-OAEP" },
         privateKey,
-        encryptedAESKey
+        enc_data
     );
 }
 
@@ -195,6 +195,47 @@ export async function generateSignMessage(username, body, privateKey) {
     const signature = await signMessage(message, privateKey);
     return { globalmessage: message, signature };
 }
+
+/**
+ * Generates an AES key of the specified size using Web Crypto API.
+ *
+ * @param {number} size - The size of the AES key in bits. Must be 128, 192, or 256.
+ * @returns {Promise<CryptoKey>} - A promise that resolves to a CryptoKey object.
+ * @throws {Error} - If the key size is invalid.
+ */
+export async function generateAESKey(size) {
+    const validSizes = [128, 192, 256];
+    if (!validSizes.includes(size)) {
+        throw new Error(`Invalid AES key size: ${size}. Must be one of ${validSizes.join(', ')} bits.`);
+    }
+
+    return await window.crypto.subtle.generateKey(
+        {
+            name: "AES-CBC", // or "AES-GCM" if you prefer authenticated encryption
+            length: size,
+        },
+        true, // extractable (can be exported if needed)
+        ["encrypt", "decrypt"]
+    );
+}
+
+export async function exportAESKeyToBase64(key) {
+    const raw = await window.crypto.subtle.exportKey("raw", key);
+    const byteArray = new Uint8Array(raw);
+    return btoa(String.fromCharCode(...byteArray));
+}
+
+export async function importAESKeyFromBase64(base64String) {
+    const binary = Uint8Array.from(atob(base64String), c => c.charCodeAt(0));
+    return await window.crypto.subtle.importKey(
+        "raw",
+        binary,
+        "AES-CBC", // or "AES-GCM", must match original
+        true,
+        ["encrypt", "decrypt"]
+    );
+}
+
 
 // --- UTILS ---
 

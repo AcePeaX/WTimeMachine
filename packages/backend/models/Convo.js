@@ -26,9 +26,24 @@ const VaultMetaSchema = new mongoose.Schema(
 const ConvoSchema = new mongoose.Schema({
     title: {
         type: String,
+        required: true
+    },
+    description: {
+        type: String,
         default: "",
     },
-
+    color: {
+        type: String,
+        default: "#000000",
+    },
+    aesSize: {
+        type: Number,
+        default: 256,
+    },
+    encryptedAesConvoKey: {
+        type: String,
+        required: true
+    },
     // 🔐 Admins and participants
     adminUsers: {
         type: [String],
@@ -92,4 +107,4 @@ ConvoSchema.pre("save", function (next) {
     next();
 });
 
-export default mongoose.model("Convo", ConvoSchema);
+export const Convo = mongoose.model("Convo", ConvoSchema);

@@ -47,10 +47,11 @@ export function loadSessionUser() {
 }
 
 // Set the current user in sessionStorage
-export function setSessionUser(username, privateKey) {
+export function setSessionUser(username, privateKey, publicKey) {
     const user = {
         username,
         privateKey,
+        publicKey
     };
     // Validate the user object
     if (!user || typeof user !== "object") {

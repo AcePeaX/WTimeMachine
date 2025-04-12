@@ -10,6 +10,8 @@ import { encryptResponse } from '../middleware/encryptResponse.js';
 import crypto from "crypto";
 import { verifyMessage } from '@timemachine/security';
 
+import { addConvo } from "./convo-handler.js";
+
 
 const apiRouter = Router();
 
@@ -87,6 +89,8 @@ apiRouter.use(authenticate, encryptResponse);
 apiRouter.post("/user", (req, res) => {
     res.status(200).send({ username: req.user.username, state: 0 });
 })
+
+apiRouter.post("/add-convo", addConvo);
 
 
 
