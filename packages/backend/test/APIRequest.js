@@ -43,7 +43,7 @@ const { publicKey, privateKey } = crypto.generateKeyPairSync("rsa", {
 });
 
 const result = await APIReq({
-    path: "/register",
+    path: "/api/register",
     method: "POST",
     body: generateSignMessage(username, { publicKey }, privateKey),
 });
@@ -56,7 +56,7 @@ if (!result.username) {
 const prvKey = privateKey;
 
 const result2 = await APIReq({
-    path: "/protected",
+    path: "/api/user",
     method: "POST",
     body: generateSignMessage(username, { hey: "lo" }, prvKey),
 });

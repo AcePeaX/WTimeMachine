@@ -17,14 +17,28 @@ export function decryptAES(encryptedHex, key) {
   return AES.utils.utf8.fromBytes(decryptedBytes);
 }
 
-// Function to encrypt an AES key with a public key
+// Encrypt AES key using RSA-OAEP
 export function encryptAESKey(aesKey, publicKey) {
-  return crypto.publicEncrypt(publicKey, aesKey);
+  return crypto.publicEncrypt(
+    {
+      key: publicKey,
+      padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+      oaepHash: "sha256",
+    },
+    aesKey
+  );
 }
 
-// Function to decrypt an AES key with a private key
+// Decrypt AES key using RSA-OAEP
 export function decryptAESKey(encryptedAESKey, privateKey) {
-  return crypto.privateDecrypt(privateKey, Buffer.from(encryptedAESKey, 'base64'));
+  return crypto.privateDecrypt(
+    {
+      key: privateKey,
+      padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+      oaepHash: "sha256",
+    },
+    Buffer.from(encryptedAESKey, "base64")
+  );
 }
 
 // Function to handle the entire encryption process

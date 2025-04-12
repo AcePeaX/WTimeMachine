@@ -27,13 +27,8 @@ db.once('open', () => {
 // Mount the API sub-app on /api
 app.use('/api', apiRouter);
 
-// Protected route
-app.post('/protected', authenticate, encryptResponse, (req, res) => {
-  res.send({text:`Welcome to the protected endpoint, ${req.user.username}!`});
-});
-
 app.all('*', (req, res) => {
-  console.log(req.url)
+  console.log('Request received:', req.method, req.url);
   res.status(404).send('Not Found');
 });
 

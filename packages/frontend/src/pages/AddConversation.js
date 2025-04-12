@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import "./AddConversation.css";
+import secureAxios from "../utils/secure-axios";
 import { Upload, Info } from "lucide-react";
 
 export function hslToHex(h, s, l) {
@@ -51,7 +52,7 @@ const AddConversation = () => {
     const handleDragOver = (e) => e.preventDefault();
 
     const handleSubmit = () => {
-        if (!conversationName || !uploadedFile) return;
+        if (!conversationName) return;
         console.log("New conversation:", {
             name: conversationName,
             description,
@@ -59,6 +60,22 @@ const AddConversation = () => {
             color,
             aesSize,
         });
+
+        secureAxios.post("/api/user", {
+            name: conversationName,
+            description,
+            color,
+            aesSize,
+        })
+        .then((response) => {
+            console.log("Conversation created:", response.data);
+            // Handle successful conversation creation
+        })
+        .catch((error) => {
+            console.error("Error creating conversation:", error);
+            // Handle error in conversation creation
+        }
+        );
     };
 
     useEffect(() => {setColor(generateHSLColorFromText(Date.now()+""))}, [setColor]);
@@ -87,7 +104,7 @@ const AddConversation = () => {
                 placeholder="Short description of the conversation"
             />
 
-            <label className="form-label">Upload a .chat/.json File</label>
+            <label className="form-label">Upload a .zip File</label>
             <div
                 className="upload-box"
                 onDrop={handleDrop}
@@ -103,7 +120,7 @@ const AddConversation = () => {
                 <input
                     id="fileInput"
                     type="file"
-                    accept=".json,.chat"
+                    accept=".zip"
                     onChange={handleFileChange}
                     style={{ display: "none" }}
                 />

@@ -43,7 +43,7 @@ const LoggedInVerifier = () => {
     const checkConnected = useCallback(() => {
         const user = loadSessionUser();
         if (user && (location.pathname === "/login" || location.pathname === "/login/")) {
-          console.log("User is logged in, redirecting to dashboard");
+            console.log("User is logged in, redirecting to dashboard");
             navigate("/dashboard");
         } else if (!user && location.pathname !== "/login") {
             setPreferredUrl(location.pathname);

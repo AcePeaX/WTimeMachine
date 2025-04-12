@@ -10,6 +10,7 @@ import { encryptResponse } from '../middleware/encryptResponse.js';
 import crypto from "crypto";
 import { verifyMessage } from '@timemachine/security';
 
+
 const apiRouter = Router();
 
 // Registration route
@@ -80,6 +81,13 @@ apiRouter.post("/register", async (req, res) => {
 apiRouter.post("/login", authenticate, async (req, res) => {
     res.status(200).send({username: req.user.username, state: 0});
 })
+
+apiRouter.use(authenticate, encryptResponse);
+
+apiRouter.post("/user", (req, res) => {
+    res.status(200).send({ username: req.user.username, state: 0 });
+})
+
 
 
 export default apiRouter;

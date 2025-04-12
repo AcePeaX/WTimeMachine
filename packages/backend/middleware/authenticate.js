@@ -4,7 +4,6 @@ import { verifyMessage } from '@timemachine/security';
 // Authentication Middleware
 export async function authenticate(req, res, next) {
     const { globalmessage, signature } = req.body;
-  
     try {
       // Parse the message (assumes it's a JSON string)
       const parsedMessage = JSON.parse(globalmessage);
@@ -16,6 +15,7 @@ export async function authenticate(req, res, next) {
       if (!user) {
         return res.status(401).send({ error: 'User not found.', state: 1 });
       }
+
 
       // Verify the signature using the user's public key
       const verified = verifyMessage(globalmessage, signature, user.publicKey);
@@ -41,6 +41,7 @@ export async function authenticate(req, res, next) {
       };
   
       next();
+  
     } catch (err) {
       res.status(500).send({ error: 'Error authenticating user.', state: -1 });
     }
