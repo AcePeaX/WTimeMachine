@@ -40,7 +40,7 @@ apiRouter.post("/register", async (req, res) => {
         }
 
         // Verify the public key
-        const key = crypto.createPublicKey({
+        crypto.createPublicKey({
             key: publicKey, // Convert from Base64
             format: "pem",
             type: "spki",

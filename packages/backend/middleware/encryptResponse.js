@@ -1,4 +1,5 @@
 import { encryptResponseData } from "@timemachine/security";
+import { logger } from "@timemachine/utils";
 
 export function encryptResponse(req, res, next) {
     // Store the original send method in a closure variable
@@ -21,7 +22,7 @@ export function encryptResponse(req, res, next) {
                 encrypted = true;
                 return originalSend({ key: encryptedAESKey, encryptedMessage });
             } catch (error) {
-                console.error("Error encrypting response:", error);
+                logger.error("Error encrypting response:", error);
                 return originalSend({ error: "Failed to encrypt response." });
             }
         } else {

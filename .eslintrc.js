@@ -16,7 +16,7 @@ module.exports = {
     },
     overrides: [
         {
-            files: ["src/frontend/**/*.js"],
+            files: ["src/frontend/**/*.js", "**/*.test.js"],
             rules: {
                 "no-console": "off",
             },

@@ -42,7 +42,7 @@ GrantBundleSchema.pre("validate", function (next) {
     const grantKeys = Array.from(this.grants?.keys?.() || []);
 
     for (const key of grantKeys) {
-        if (key === "all") continue; // Allow "all" as a valid universal grant key
+        if (key === "all" || key === "sender") continue; // Allow "all" and "sender" as a valid universal grant key
 
         const [level, pathStr] = key.split("-");
         if (!LEVELS.includes(level)) {

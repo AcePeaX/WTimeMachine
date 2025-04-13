@@ -211,7 +211,7 @@ export async function generateAESKey(size) {
 
     return await window.crypto.subtle.generateKey(
         {
-            name: "AES-CBC", // or "AES-GCM" if you prefer authenticated encryption
+            name: "AES-GCM", // or "AES-GCM" if you prefer authenticated encryption
             length: size,
         },
         true, // extractable (can be exported if needed)
@@ -230,7 +230,7 @@ export async function importAESKeyFromBase64(base64String) {
     return await window.crypto.subtle.importKey(
         "raw",
         binary,
-        "AES-CBC", // or "AES-GCM", must match original
+        "AES-GCM", // or "AES-GCM", must match original
         true,
         ["encrypt", "decrypt"]
     );
@@ -246,6 +246,16 @@ export function base64ToUint8Array(base64) {
 export function uint8ArrayToBase64(arr) {
     return btoa(String.fromCharCode(...new Uint8Array(arr)));
 }
+
+export async function cryptoKeyToUint8Array(cryptoKey) {
+    if (!cryptoKey || cryptoKey.type !== "secret") {
+        throw new Error("Input must be a valid AES CryptoKey of type 'secret'");
+    }
+
+    const raw = await window.crypto.subtle.exportKey("raw", cryptoKey);
+    return new Uint8Array(raw);
+}
+
 
 // Note: You must import/export/generate keys using window.crypto.subtle API
 // Keys should be imported/exported in JWK or SPKI/PKCS8 format depending on use-case
@@ -332,5 +342,115 @@ export async function decryptPrivateKeyWithPassword(encryptedData, password) {
         "\n-----END PRIVATE KEY-----";
 
     return pem;
+}
+
+
+/**
+ * Checks if a given CryptoKey is a valid HKDF master key
+ * 
+ * @param {CryptoKey} key 
+ * @throws {Error} If the key is not usable for HKDF derivation
+ */
+function assertHKDFKey(key) {
+    if (!(key instanceof CryptoKey)) {
+        throw new Error("Provided key is not a CryptoKey object.");
+    }
+
+    if (key.algorithm.name !== "HKDF") {
+        throw new Error(`Invalid key algorithm. Expected 'HKDF', got '${key.algorithm.name}'.`);
+    }
+
+    if (!key.usages.includes("deriveKey")) {
+        throw new Error("CryptoKey does not have 'deriveKey' usage.");
+    }
+}
+
+export async function encryptAESGCM(plaintext, cryptoKey) {
+    const iv = window.crypto.getRandomValues(new Uint8Array(12)); // 96-bit IV (recommended for GCM)
+
+    const encoded = typeof plaintext === "string"
+        ? new TextEncoder().encode(plaintext)
+        : plaintext;
+
+    const ciphertext = await window.crypto.subtle.encrypt(
+        {
+            name: "AES-GCM",
+            iv,
+        },
+        cryptoKey,
+        encoded
+    );
+
+    return {
+        ciphertext: btoa(String.fromCharCode(...new Uint8Array(ciphertext))),
+        iv: btoa(String.fromCharCode(...iv)), // return both as base64 strings
+    };
+}
+
+export async function decryptAESGCM(ciphertextBase64, ivBase64, cryptoKey) {
+    const ciphertext = Uint8Array.from(atob(ciphertextBase64), c => c.charCodeAt(0));
+    const iv = Uint8Array.from(atob(ivBase64), c => c.charCodeAt(0));
+
+    const decrypted = await window.crypto.subtle.decrypt(
+        {
+            name: "AES-GCM",
+            iv,
+        },
+        cryptoKey,
+        ciphertext
+    );
+
+    return new TextDecoder().decode(decrypted);
+}
+
+
+
+/**
+ * Derives a reproducible AES-GCM key from a master key using HKDF.
+ *
+ * @param {string | CryptoKey} masterKey - Base64 string or CryptoKey to derive from.
+ * @param {string} id - Unique identifier (e.g. "vault-000042.01.02").
+ * @param {number} keySize - Key length in bits: 128, 192, or 256. Defaults to 256.
+ * @param {string} keyType - Key type to derive. Defaults to "AES-GCM". Possible values: "AES-GCM", "HKDF".
+ * @returns {Promise<CryptoKey>} - The derived AES-GCM key.
+ */
+export async function deriveKeyFromMaster(masterKey, id, keySize = 256, keyType="AES-GCM") {
+    let baseKey;
+
+    if (typeof masterKey === "string") {
+        // Decode base64 string
+        const rawKey = Uint8Array.from(atob(masterKey), c => c.charCodeAt(0));
+        baseKey = await crypto.subtle.importKey(
+            "raw",
+            rawKey,
+            "HKDF",
+            false,
+            ["deriveKey"]
+        );
+    } else if (masterKey instanceof CryptoKey) {
+        baseKey = masterKey;
+        assertHKDFKey(baseKey);
+    } else {
+        throw new Error("Invalid masterKey: must be base64 string or CryptoKey");
+    }
+
+    const salt = new TextEncoder().encode("TimeMachine-salt");
+    const info = new TextEncoder().encode(id);
+
+    return crypto.subtle.deriveKey(
+        {
+            name: "HKDF",
+            hash: "SHA-256",
+            salt,
+            info,
+        },
+        baseKey,
+        {
+            name: keyType,
+            length: keySize,
+        },
+        true,
+        ["encrypt", "decrypt"]
+    );
 }
 

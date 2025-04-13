@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { encryptResponseData, decryptRequestData } from "@timemachine/security";
+import { logger } from "@timemachine/utils";
 
 const EncryptedTraceLogSchema = new mongoose.Schema({
     // Stores the encrypted result (AES key + encrypted data)
@@ -54,7 +55,7 @@ EncryptedTraceLogSchema.post("init", function (doc) {
             );
             doc.decrypted = decrypted; // Attach the raw data for easy usage
         } catch (err) {
-            console.warn("[EncryptedTraceLog] Decryption failed:", err.message);
+            logger.warn("[EncryptedTraceLog] Decryption failed:", err.message);
         }
     }
 });

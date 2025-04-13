@@ -28,17 +28,21 @@ const messageSchema = new mongoose.Schema({
 
     // For text messages only
     content: {
-        ciphertext: { type: String },
+        ciphertext: { type: String , required: true},
+        iv: { type: String, required: true },
         metadata: {
             encoding: String,
             lang: String,
-        },
+        }
     },
 
     // For media messages only
     mediaRef: {
         mediaId: mongoose.Types.ObjectId,
-        encryptedMediaKey: String,
+        encryptedMediaKey: {
+            ciphertext: { type: String , required: true},
+            iv: { type: String, required: true },
+        },
         derivedKeyLevel: String,
         path: [String],
     },

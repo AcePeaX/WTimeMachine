@@ -102,7 +102,7 @@ const AddConversation = () => {
             .then(async (response) => {
                 // Handle successful conversation creation
                 if (uploadedFile) {
-                    await conversationUploadLogic(setUploadModal, response.data.convoId, uploadedFile);
+                    await conversationUploadLogic(setUploadModal, response.data.convoId, uploadedFile, aesKeyString, parseInt(aesSize));
                 }
             })
             .catch((error) => {
@@ -245,7 +245,7 @@ const AddConversation = () => {
                         <div className="pg-comment">{uploadModal.pg1_comment}</div>
                         <ProgressBar progress={uploadModal.pg1} color={null} className="pg-conv-upload-1" />
                         <div className="pg-comment">{uploadModal.pg2_comment}</div>
-                        <ProgressBar progress={uploadModal.pg2} color={null} className="pg-conv-upload-1" />
+                        <ProgressBar progress={uploadModal.pg2} color={null} className="pg-conv-upload-2" />
                     </div>
                 </Modal>
             </div>

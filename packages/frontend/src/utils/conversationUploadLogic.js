@@ -1,5 +1,8 @@
 import secureAxios from "./secure-axios";
+import { deriveKeyFromMaster, exportAESKeyToBase64 } from "./security";
+import * as MSG from "./messages.js";
 import { unzipSync, strFromU8 } from "fflate";
+import { encryptMessage } from "./messages.js";
 
 function splitOnce(str, delimiter) {
     const index = str.indexOf(delimiter);
@@ -63,7 +66,9 @@ export async function unzipFile(file) {
 export const conversationUploadLogic = async (
     setUploadModalState,
     conv_id,
-    zip_file
+    zip_file,
+    conversationKeyString,
+    keySize
 ) => {
     setUploadModalState((old) => {
         return {
@@ -186,21 +191,23 @@ export const conversationUploadLogic = async (
 
     const encryptedMessages = {};
 
-    const THRESHOLD_BATCH_UPLOAD_SIZE = 1000;
+    const THRESHOLD_BATCH_UPLOAD_SIZE = 1024 * 50;
 
     let uploading = false;
     let numUploaded = 0;
 
-    let done_encrypting = false;
+    let done_encrypting_msg = false;
 
-    const check_adn_upload = () => {
+    const check_adn_upload_msg = () => {
         if (!uploading) {
-            let keys = getKeysWithinSizeLimit(
+            let [keys, size] = getKeysWithinSizeLimit(
                 encryptedMessages,
                 THRESHOLD_BATCH_UPLOAD_SIZE
             );
-            if (keys.length === 0 && !done_encrypting) return;
-            else if(keys.length === 0 ){keys = Object.keys(encryptedMessages);}
+            if (keys.length === 0 && !done_encrypting_msg) return;
+            else if (keys.length === 0) {
+                keys = Object.keys(encryptedMessages);
+            }
             const toUploadDict = {};
             let numMsg = 0;
             for (let key of keys) {
@@ -210,7 +217,7 @@ export const conversationUploadLogic = async (
             }
             uploading = true;
             return new Promise(async (resolve, reject) => {
-                await sleep(1000);
+                await sleep(400+size);
                 numUploaded += numMsg;
                 setUploadModalState((old) => {
                     return {
@@ -220,10 +227,16 @@ export const conversationUploadLogic = async (
                     };
                 });
                 uploading = false;
-                resolve(true)
+                resolve(true);
             });
         }
     };
+
+    const senderKey  = await deriveKeyFromMaster(
+        conversationKeyString,
+        "sender",
+        keySize
+    );
 
     setUploadModalState((old) => {
         return {
@@ -232,11 +245,99 @@ export const conversationUploadLogic = async (
             pg2_comment: `Uploading 0/${messageCount}`,
         };
     });
+    let [oldVault, oldBlock, oldGroup, oldChunk] = [-1, -1, -1, -1];
+    let [vaultKey, blockKey, groupKey, chunkKey, messageKey] = [null, null, null, null, null];
     // Loop over messages
     for (let i = 0; i < messages.length; i++) {
-        await sleep(200);
-        encryptedMessages[i] = messages[i];
-        check_adn_upload();
+        const { vault, block, group, chunk } = MSG.indexToHierarchy(i);
+
+        if (vault !== oldVault) {
+            try {
+                vaultKey = await exportAESKeyToBase64(
+                    await deriveKeyFromMaster(
+                        conversationKeyString,
+                        `vault-${vault.toString().padStart(6, "0")}`,
+                        keySize
+                    )
+                );
+            } catch (e) {
+                console.error("Error deriving vault key:", e);
+                throw e;
+            }
+        }
+        if (block !== oldBlock) {
+            try {
+                blockKey = await exportAESKeyToBase64(
+                    await deriveKeyFromMaster(
+                        vaultKey,
+                        `block-${vault.toString().padStart(6, "0")}.${block
+                            .toString()
+                            .padStart(2, "0")}`,
+                        keySize
+                    )
+                );
+            } catch (e) {
+                console.error("Error deriving block key:", e);
+                throw e;
+            }
+        }
+        if (group !== oldGroup) {
+            try {
+                groupKey = await exportAESKeyToBase64(
+                    await deriveKeyFromMaster(
+                        blockKey,
+                        `group-${vault.toString().padStart(6, "0")}.${block
+                            .toString()
+                            .padStart(2, "0")}.${group
+                            .toString()
+                            .padStart(2, "0")}`,
+                        keySize
+                    )
+                );
+            } catch (e) {
+                console.error("Error deriving group key:", e);
+                throw e;
+            }
+        }
+        if (chunk !== oldChunk) {
+            try {
+                chunkKey = await exportAESKeyToBase64(await deriveKeyFromMaster(
+                    groupKey,
+                    `chunk-${vault.toString().padStart(6, "0")}.${block
+                        .toString()
+                        .padStart(2, "0")}.${group
+                        .toString()
+                        .padStart(2, "0")}.${chunk
+                        .toString()
+                        .padStart(2, "0")}`,
+                    keySize
+                ));
+            } catch (e) {
+                console.error("Error deriving chunk key:", e);
+                throw e;
+            }
+        }
+        try {
+            messageKey = await deriveKeyFromMaster(
+                chunkKey,
+                `message-${vault.toString().padStart(6, "0")}.${block
+                    .toString()
+                    .padStart(2, "0")}.${group
+                    .toString()
+                    .padStart(2, "0")}.${chunk
+                    .toString()
+                    .padStart(2, "0")}.${i.toString().padStart(2, "0")}`,
+                keySize
+            );
+        } catch (e) {
+            console.error("Error deriving chunk key:", e);
+            throw e;
+        }
+        
+        const encryptedMessage = await encryptMessage(messages[i], messageKey, senderKey);
+        encryptedMessages[i] = encryptedMessage;
+        messages[i] = null;
+        check_adn_upload_msg();
         const current_idx = i + 1;
         setUploadModalState((old) => {
             return {
@@ -245,12 +346,16 @@ export const conversationUploadLogic = async (
                 pg1_comment: `Encrypting messages: ${current_idx}/${messageCount}`,
             };
         });
+        oldVault = vault;
+        oldBlock = block;
+        oldGroup = group;
+        oldChunk = chunk;
     }
 
-    done_encrypting = true;
+    done_encrypting_msg = true;
 
-    while(Object.keys(encryptedMessages).length > 0){
-        await check_adn_upload();
+    while (Object.keys(encryptedMessages).length > 0) {
+        await check_adn_upload_msg();
         await sleep(100);
     }
 };
@@ -274,10 +379,10 @@ function getKeysWithinSizeLimit(dict, maxBytes) {
         const itemSize = new Blob([JSON.stringify(dict[key])]).size;
         cumulativeSize += itemSize;
         result.push(key);
-        if (cumulativeSize > maxBytes) return result;
+        if (cumulativeSize > maxBytes) return [result, cumulativeSize];
     }
 
-    return result;
+    return [result, cumulativeSize];
 }
 
 function sleep(ms) {

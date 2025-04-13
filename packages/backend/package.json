@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node app.js",
     "dev": "nodemon app.js",
-    "test:api": "node test/APIRequest.js"
+    "test:api": "node test/APIRequest.test.js"
   },
   "keywords": [],
   "homepage": ".",

@@ -18,8 +18,6 @@ export const addConvo = async (req, res) => {
         return res.status(400).json({ errors });
     }
 
-    const { convo } = req.body;
-
     const title = req.body.title;
     const force = req.body.force;
     const username = req.user.username;
@@ -44,13 +42,12 @@ export const addConvo = async (req, res) => {
             adminUsers: [username],
             description: req.body.description,
             participantUsers: [username],
-            adminUsers: [username],
             createdBy: username,
             aesSize: req.body.aesSize,
             color: req.body.color,
         });
         
-        const grant = await Grant.create({
+        await Grant.create({
             grantee: username,
             convoId: convo._id,
             isAdmin: true,
