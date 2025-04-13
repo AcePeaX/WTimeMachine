@@ -11,7 +11,9 @@ import {
     uint8ArrayToBase64,
 } from "../utils/security";
 import { loadSessionUser } from "../utils/users";
-import { QuickModal } from "../utils/Modal";
+import Modal, { QuickModal } from "../utils/Modal";
+import { conversationUploadLogic } from "../utils/conversationUploadLogic";
+import { ProgressBar } from "../utils/ProgressBar";
 
 export function hslToHex(h, s, l) {
     s /= 100;
@@ -48,6 +50,14 @@ const AddConversation = () => {
     const [color, setColor] = useState("#7C3AED");
     const [aesSize, setAESSize] = useState("256");
 
+    const [uploadModal, setUploadModal] = useState({
+        open: false,
+        pg1: 0,
+        pg1_comment: "",
+        pg2: 0,
+        pg2_comment: "",
+    });
+
     const confirmModal = useRef(null);
 
     const [erros, setErrors] = useState({});
@@ -65,7 +75,7 @@ const AddConversation = () => {
 
     const handleDragOver = (e) => e.preventDefault();
 
-    const handleSubmit = async (e, force=false) => {
+    const handleSubmit = async (e, force = false) => {
         if (!conversationName) return;
 
         const user = loadSessionUser();
@@ -73,13 +83,12 @@ const AddConversation = () => {
 
         const aesKey = await generateAESKey(parseInt(aesSize));
         const aesKeyString = await exportAESKeyToBase64(aesKey);
-        console.log(aesKeyString)
 
         const encryptedAesKey = await encryptAESKey(
             base64ToUint8Array(aesKeyString),
             publicKey
         );
-        const encryptedAesKeyString = uint8ArrayToBase64(encryptedAesKey)
+        const encryptedAesKeyString = uint8ArrayToBase64(encryptedAesKey);
 
         secureAxios
             .post("/api/add-convo", {
@@ -88,21 +97,24 @@ const AddConversation = () => {
                 color,
                 aesSize: parseInt(aesSize),
                 encryptedAesConvoKey: encryptedAesKeyString,
-                force: force
+                force: force,
             })
-            .then((response) => {
-                console.log("Conversation created:", response.data);
+            .then(async (response) => {
                 // Handle successful conversation creation
+                if (uploadedFile) {
+                    await conversationUploadLogic(setUploadModal, response.data.convoId, uploadedFile);
+                }
             })
             .catch((error) => {
-                console.error("Error creating conversation:", error);
-                setErrors(error.response.data.errors || {});
-                if(error.response.data.state === 2) {
-                    confirmModal.current.open()
+                if (error.response?.data.state === 2) {
+                    confirmModal.current.open();
                 }
+                else{
+                    console.error("Error creating conversation:", error);
+                }
+                setErrors(error.response.data.errors || {});
             });
     };
-
 
     useEffect(() => {
         setColor(generateHSLColorFromText(Date.now() + ""));
@@ -214,12 +226,33 @@ const AddConversation = () => {
                     a confirmed breach occurs.
                 </p>
             </div>
-            <QuickModal ref={confirmModal} onConfirm={()=>{handleSubmit(null, true)}}>
+            <QuickModal
+                ref={confirmModal}
+                onConfirm={() => {
+                    handleSubmit(null, true);
+                }}
+            >
                 <h2>Are you sure?</h2>
-                <center>A conversation with this name does already exist in your account</center>
+                <center>
+                    A conversation with this name does already exist in your
+                    account
+                </center>
             </QuickModal>
+            <div className="conv-upload-modal-targetter">
+                <Modal isOpen={uploadModal.open} onClose={() => {setUploadModal({ ...uploadModal, open: false })}}>
+                    <div className="conv-upload-modal">
+                        <h2>Uploading Conversation</h2>
+                        <div className="pg-comment">{uploadModal.pg1_comment}</div>
+                        <ProgressBar progress={uploadModal.pg1} color={null} className="pg-conv-upload-1" />
+                        <div className="pg-comment">{uploadModal.pg2_comment}</div>
+                        <ProgressBar progress={uploadModal.pg2} color={null} className="pg-conv-upload-1" />
+                    </div>
+                </Modal>
+            </div>
         </div>
     );
 };
+
+
 
 export default AddConversation;

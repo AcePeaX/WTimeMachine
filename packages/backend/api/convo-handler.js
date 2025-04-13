@@ -1,7 +1,7 @@
 import { Convo } from "../models/Convo.js";
 import { Grant } from "../models/Grant.js";
 
-import { validateRequest } from "@timemachine/utils";
+import { validateRequest, logger } from "@timemachine/utils";
 
 export const addConvo = async (req, res) => {
     const rules = {
@@ -61,12 +61,13 @@ export const addConvo = async (req, res) => {
             }
         });
 
-        console.log("✅ Conversation created:", convo._id);
+        logger.info("Conversation created", {convoId: convo._id});
         res.status(201).json({
             convoId: convo._id,
             state: 0,
         });
     } catch (err) {
+        logger.error("Error creating conversation:", err);
         res.status(500).send({
             error: "Error creating conversation.",
             state: -1,

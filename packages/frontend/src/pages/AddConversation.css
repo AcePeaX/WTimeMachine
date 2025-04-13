@@ -96,3 +96,30 @@ h1 {
     color: red;
     display: inline-block;
 }
+
+
+
+/* ________________________________________ */
+
+.conv-upload-modal-targetter .modal-content {
+    width: 60%;
+    max-width: 10000px;
+    display: flex;
+    justify-content: center;
+}
+
+.conv-upload-modal {
+    width: 90%;
+}
+
+.pg-comment{
+    margin-bottom: 8px;
+    margin-top: 15px;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.pg-conv-upload-1 .progress-bar{
+    background-color: var(--primary);
+}

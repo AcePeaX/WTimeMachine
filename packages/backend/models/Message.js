@@ -3,7 +3,18 @@ import mongoose from "mongoose";
 const messageSchema = new mongoose.Schema({
     convoId: { type: String, required: true, index: true },
     sequence: { type: Number, required: true },
-    sender: { type: String, required: true },
+    sender: {
+        type: String,
+        required: true,
+        validate: {
+            validator: function (v) {
+                return typeof v === "string" || v === null;
+            },
+            message: "Sender must be a string or null",
+        },
+        default: null,
+    },
+
     timestamp: { type: Number, required: true },
     type: { type: String, enum: ["text", "media"], required: true },
 
@@ -31,6 +42,12 @@ const messageSchema = new mongoose.Schema({
         derivedKeyLevel: String,
         path: [String],
     },
+
+    // Optional field for search support (hashed or HMACed value of plaintext)
+    searchableHash: {
+        type: [String],
+        index: true,
+    },
 });
 
 // Conditional validation based on type
@@ -54,4 +71,4 @@ messageSchema.pre("validate", function (next) {
     next();
 });
 
-export default mongoose.model("Message", messageSchema);
+export const Message = mongoose.model("Message", messageSchema);
