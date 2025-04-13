@@ -5,9 +5,8 @@ import AES from "aes-js";
 // --- AES ---
 
 export function encryptAES(input, key) {
-    const bytes = input instanceof Uint8Array
-        ? input
-        : AES.utils.utf8.toBytes(input); // fallback only if string
+    const bytes =
+        input instanceof Uint8Array ? input : AES.utils.utf8.toBytes(input); // fallback only if string
 
     const aesCtr = new AES.ModeOfOperation.ctr(key, new AES.Counter(5));
     const encryptedBytes = aesCtr.encrypt(bytes);
@@ -15,7 +14,6 @@ export function encryptAES(input, key) {
     // Return base64 directly
     return AES.utils.hex.fromBytes(encryptedBytes);
 }
-
 
 export function decryptAES(encryptedHex, key) {
     const encryptedBytes = AES.utils.hex.toBytes(encryptedHex);
@@ -206,7 +204,11 @@ export async function generateSignMessage(username, body, privateKey) {
 export async function generateAESKey(size) {
     const validSizes = [128, 192, 256];
     if (!validSizes.includes(size)) {
-        throw new Error(`Invalid AES key size: ${size}. Must be one of ${validSizes.join(', ')} bits.`);
+        throw new Error(
+            `Invalid AES key size: ${size}. Must be one of ${validSizes.join(
+                ", "
+            )} bits.`
+        );
     }
 
     return await window.crypto.subtle.generateKey(
@@ -226,7 +228,7 @@ export async function exportAESKeyToBase64(key) {
 }
 
 export async function importAESKeyFromBase64(base64String) {
-    const binary = Uint8Array.from(atob(base64String), c => c.charCodeAt(0));
+    const binary = Uint8Array.from(atob(base64String), (c) => c.charCodeAt(0));
     return await window.crypto.subtle.importKey(
         "raw",
         binary,
@@ -235,7 +237,6 @@ export async function importAESKeyFromBase64(base64String) {
         ["encrypt", "decrypt"]
     );
 }
-
 
 // --- UTILS ---
 
@@ -255,7 +256,6 @@ export async function cryptoKeyToUint8Array(cryptoKey) {
     const raw = await window.crypto.subtle.exportKey("raw", cryptoKey);
     return new Uint8Array(raw);
 }
-
 
 // Note: You must import/export/generate keys using window.crypto.subtle API
 // Keys should be imported/exported in JWK or SPKI/PKCS8 format depending on use-case
@@ -287,13 +287,13 @@ export async function deriveAESKeyFromPassword(password, salt) {
 }
 
 const hexToBase64 = (hex) => {
-    const arr = new Uint8Array(hex.match(/.{1,2}/g).map(b => parseInt(b, 16)));
+    const arr = new Uint8Array(
+        hex.match(/.{1,2}/g).map((b) => parseInt(b, 16))
+    );
     return btoa(String.fromCharCode(...arr));
-}
-
+};
 
 export async function encryptPrivateKeyWithPassword(privateKeyPEM, password) {
-
     // 1. Strip header/footer and whitespace
     const strippedBase64 = privateKeyPEM
         .replace(/-----BEGIN PRIVATE KEY-----/, "")
@@ -301,7 +301,9 @@ export async function encryptPrivateKeyWithPassword(privateKeyPEM, password) {
         .replace(/\s+/g, "");
 
     // 2. Convert base64 → binary
-    const binary = Uint8Array.from(atob(strippedBase64), c => c.charCodeAt(0));
+    const binary = Uint8Array.from(atob(strippedBase64), (c) =>
+        c.charCodeAt(0)
+    );
 
     // 3. Derive AES key
     const salt = window.crypto.getRandomValues(new Uint8Array(16));
@@ -320,7 +322,6 @@ export async function encryptPrivateKeyWithPassword(privateKeyPEM, password) {
     };
 }
 
-
 export async function decryptPrivateKeyWithPassword(encryptedData, password) {
     const { salt, ciphertext } = encryptedData;
 
@@ -328,7 +329,9 @@ export async function decryptPrivateKeyWithPassword(encryptedData, password) {
     const aesKey = await deriveAESKeyFromPassword(password, salt);
 
     // 2. Decrypt → binary
-    const decryptedBytes = Uint8Array.from(atob(ciphertext), c => c.charCodeAt(0));
+    const decryptedBytes = Uint8Array.from(atob(ciphertext), (c) =>
+        c.charCodeAt(0)
+    );
     const aesCtr = new AES.ModeOfOperation.ctr(aesKey, new AES.Counter(5));
     const decryptedBinary = aesCtr.decrypt(decryptedBytes);
 
@@ -344,11 +347,10 @@ export async function decryptPrivateKeyWithPassword(encryptedData, password) {
     return pem;
 }
 
-
 /**
  * Checks if a given CryptoKey is a valid HKDF master key
- * 
- * @param {CryptoKey} key 
+ *
+ * @param {CryptoKey} key
  * @throws {Error} If the key is not usable for HKDF derivation
  */
 function assertHKDFKey(key) {
@@ -357,7 +359,9 @@ function assertHKDFKey(key) {
     }
 
     if (key.algorithm.name !== "HKDF") {
-        throw new Error(`Invalid key algorithm. Expected 'HKDF', got '${key.algorithm.name}'.`);
+        throw new Error(
+            `Invalid key algorithm. Expected 'HKDF', got '${key.algorithm.name}'.`
+        );
     }
 
     if (!key.usages.includes("deriveKey")) {
@@ -365,12 +369,12 @@ function assertHKDFKey(key) {
     }
 }
 
-export async function encryptAESGCM(plaintext, cryptoKey) {
+export async function encryptAESGCM(content, cryptoKey) {
     const iv = window.crypto.getRandomValues(new Uint8Array(12)); // 96-bit IV (recommended for GCM)
 
-    const encoded = typeof plaintext === "string"
-        ? new TextEncoder().encode(plaintext)
-        : plaintext;
+    const isString = typeof content === "string";
+
+    const encoded = isString ? new TextEncoder().encode(content) : content;
 
     const ciphertext = await window.crypto.subtle.encrypt(
         {
@@ -382,14 +386,16 @@ export async function encryptAESGCM(plaintext, cryptoKey) {
     );
 
     return {
-        ciphertext: btoa(String.fromCharCode(...new Uint8Array(ciphertext))),
+        ciphertext: isString ? btoa(String.fromCharCode(...new Uint8Array(ciphertext))) : new Uint8Array(ciphertext),
         iv: btoa(String.fromCharCode(...iv)), // return both as base64 strings
     };
 }
 
 export async function decryptAESGCM(ciphertextBase64, ivBase64, cryptoKey) {
-    const ciphertext = Uint8Array.from(atob(ciphertextBase64), c => c.charCodeAt(0));
-    const iv = Uint8Array.from(atob(ivBase64), c => c.charCodeAt(0));
+    const ciphertext = Uint8Array.from(atob(ciphertextBase64), (c) =>
+        c.charCodeAt(0)
+    );
+    const iv = Uint8Array.from(atob(ivBase64), (c) => c.charCodeAt(0));
 
     const decrypted = await window.crypto.subtle.decrypt(
         {
@@ -403,8 +409,6 @@ export async function decryptAESGCM(ciphertextBase64, ivBase64, cryptoKey) {
     return new TextDecoder().decode(decrypted);
 }
 
-
-
 /**
  * Derives a reproducible AES-GCM key from a master key using HKDF.
  *
@@ -414,24 +418,27 @@ export async function decryptAESGCM(ciphertextBase64, ivBase64, cryptoKey) {
  * @param {string} keyType - Key type to derive. Defaults to "AES-GCM". Possible values: "AES-GCM", "HKDF".
  * @returns {Promise<CryptoKey>} - The derived AES-GCM key.
  */
-export async function deriveKeyFromMaster(masterKey, id, keySize = 256, keyType="AES-GCM") {
+export async function deriveKeyFromMaster(
+    masterKey,
+    id,
+    keySize = 256,
+    keyType = "AES-GCM"
+) {
     let baseKey;
 
     if (typeof masterKey === "string") {
         // Decode base64 string
-        const rawKey = Uint8Array.from(atob(masterKey), c => c.charCodeAt(0));
-        baseKey = await crypto.subtle.importKey(
-            "raw",
-            rawKey,
-            "HKDF",
-            false,
-            ["deriveKey"]
-        );
+        const rawKey = Uint8Array.from(atob(masterKey), (c) => c.charCodeAt(0));
+        baseKey = await crypto.subtle.importKey("raw", rawKey, "HKDF", false, [
+            "deriveKey",
+        ]);
     } else if (masterKey instanceof CryptoKey) {
         baseKey = masterKey;
         assertHKDFKey(baseKey);
     } else {
-        throw new Error("Invalid masterKey: must be base64 string or CryptoKey");
+        throw new Error(
+            "Invalid masterKey: must be base64 string or CryptoKey"
+        );
     }
 
     const salt = new TextEncoder().encode("TimeMachine-salt");
@@ -453,4 +460,3 @@ export async function deriveKeyFromMaster(masterKey, id, keySize = 256, keyType=
         ["encrypt", "decrypt"]
     );
 }
-

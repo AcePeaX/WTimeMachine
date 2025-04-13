@@ -75,7 +75,9 @@ export async function decryptMessage(
     senderKey
 ) {
     const decryptedContent =
-        type === "text" ? await decryptAESGCM(content.ciphertext, content.iv, key) : null;
+        type === "text"
+            ? await decryptAESGCM(content.ciphertext, content.iv, key)
+            : null;
 
     const decryptedSender = sender
         ? decryptAES(sender, await cryptoKeyToUint8Array(senderKey))
@@ -87,4 +89,80 @@ export async function decryptMessage(
         content: decryptedContent,
         mediaRef,
     };
+}
+
+export async function encryptFile(
+    { mimeType, content, filename, size },
+    key
+) {
+    const encryptedContent = await encryptAESGCM(content, key);
+
+    const filenameEncrypted = encryptAES(filename, await cryptoKeyToUint8Array(key))
+    return {
+        filename: filenameEncrypted,
+        content: encryptedContent,
+        mimeType,
+        size
+    };
+}
+
+export async function decryptFile(
+    { filename, content, mimeType, size },
+    key
+) {
+    const decryptedContent = await decryptAESGCM(content.ciphertext, content.iv, key);
+    const decryptedFilename = decryptAES(filename, await cryptoKeyToUint8Array(key));
+
+    return {
+        filename: decryptedFilename,
+        content: decryptedContent,
+        mimeType,
+        size
+    };
+}
+
+
+export function getMimeTypeFromFilename(filename) {
+    const extension = filename.split(".").pop().toLowerCase();
+    const mimeTypes = {
+        // Text & documents
+        txt: "text/plain",
+        html: "text/html",
+        json: "application/json",
+        csv: "text/csv",
+        pdf: "application/pdf",
+        vcf: "text/vcard",
+
+        // Images
+        jpg: "image/jpeg",
+        jpeg: "image/jpeg",
+        png: "image/png",
+        gif: "image/gif",
+        webp: "image/webp",
+        svg: "image/svg+xml",
+        bmp: "image/bmp",
+
+        // Audio
+        mp3: "audio/mpeg",
+        wav: "audio/wav",
+        ogg: "audio/ogg",
+        opus: "audio/opus",
+        m4a: "audio/mp4",
+
+        // Video
+        mp4: "video/mp4",
+        webm: "video/webm",
+        mov: "video/quicktime",
+
+        // Compressed / Archive
+        zip: "application/zip",
+        rar: "application/vnd.rar",
+        "7z": "application/x-7z-compressed",
+        tar: "application/x-tar",
+
+        // Default fallback
+        default: "application/octet-stream",
+    };
+
+    return mimeTypes[extension] || mimeTypes.default;
 }

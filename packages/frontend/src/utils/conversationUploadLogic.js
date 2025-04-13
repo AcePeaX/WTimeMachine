@@ -2,7 +2,12 @@ import secureAxios from "./secure-axios";
 import { deriveKeyFromMaster, exportAESKeyToBase64 } from "./security";
 import * as MSG from "./messages.js";
 import { unzipSync, strFromU8 } from "fflate";
-import { encryptMessage } from "./messages.js";
+import {
+    encryptMessage,
+    getMimeTypeFromFilename,
+    encryptFile,
+    decryptFile,
+} from "./messages.js";
 
 function splitOnce(str, delimiter) {
     const index = str.indexOf(delimiter);
@@ -49,7 +54,9 @@ export async function unzipFile(file) {
                 // Convert all files to text (or handle them however you want)
                 const extracted = Object.entries(files).map(([name, data]) => ({
                     name,
-                    content: strFromU8(data),
+                    content: data,
+                    size: data.length, // size in bytes
+                    mimeType: getMimeTypeFromFilename(name),
                 }));
 
                 resolve(extracted);
@@ -80,7 +87,6 @@ export const conversationUploadLogic = async (
             pg2_comment: "Waiting...",
         };
     });
-    console.log("Conversation ID:", conv_id);
 
     const file = await unzipFile(zip_file);
 
@@ -93,9 +99,7 @@ export const conversationUploadLogic = async (
         );
     }
 
-    const mainFile = file[0].content;
-
-    console.log(file[0]);
+    const mainFile = strFromU8(file[0].content);
 
     setUploadModalState((old) => {
         return {
@@ -122,15 +126,21 @@ export const conversationUploadLogic = async (
 
     let timeTracker = Date.now();
 
+    const files_needed = {};
+
     // Loop over lines in mainFile
     const lines = mainFile.split("\n");
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
         if (line === "") continue;
-        const [msgDateRaw, rest] = splitOnce(line, " - ");
+        let [msgDateRaw, rest] = splitOnce(line, " - ");
         let msgDate = null;
         try {
             msgDate = parseDateTime(msgDateRaw);
+            if (isNaN(msgDate.getTime())) {
+                messages[messages.length - 1].content += "\n" + line;
+                continue;
+            }
         } catch (e) {
             continue;
         }
@@ -144,16 +154,16 @@ export const conversationUploadLogic = async (
         if (msgSender !== null) {
             let [a, b] = splitOnce(msgContent, " (file attached)");
             if (b === "") {
-                const correspondingFiles = file.filter((f) => f.name === a);
-                if (correspondingFiles.length > 1) {
-                    throw new Error("Multiple files with the same name found");
-                } else if (correspondingFiles.length === 1) {
+                const correspondingFileIndex = file.findIndex(
+                    (f) => f.name === a
+                );
+                if (correspondingFileIndex !== -1) {
                     msgContent = a;
+                    files_needed[msgContent] = correspondingFileIndex;
                     type = "media";
                 }
             }
         }
-        //console.log(msgContent);
         messages.push({
             date: msgDate,
             sender: msgSender,
@@ -181,28 +191,92 @@ export const conversationUploadLogic = async (
         };
     });
 
+    let total_file_size = 0;
+    for (const [, value] of Object.entries(files_needed)) {
+        const size = file[value].size;
+        total_file_size += size;
+    }
+
+    const message_size = Math.max(file[0].size, messageCount * 10000);
+
+    console.log(total_file_size / (message_size + total_file_size));
+
+    const pg1_percentage_phase1 =
+        Math.min(
+            Math.max(total_file_size / (message_size + total_file_size), 0.3),
+            0.7
+        ) * 99;
+    const pg2_percentage_phase1 =
+        Math.min(
+            Math.max(total_file_size / (message_size + total_file_size), 0.1),
+            0.9
+        ) * 100;
+
+    const num_files = Object.keys(files_needed).length;
+
     setUploadModalState((old) => {
         return {
             ...old,
             pg1: 1,
-            pg1_comment: `Encrypting messages: 0/${messageCount}`,
+            pg1_comment: `Encrypting files: 0/${num_files}`,
         };
     });
 
     const encryptedMessages = {};
+    const encryptedFiles = {};
 
-    const THRESHOLD_BATCH_UPLOAD_SIZE = 1024 * 50;
+
+    const THRESHOLD_BATCH_MSG_UPLOAD_SIZE = 1024 * 5;
+    const THRESHOLD_BATCH_IMG_UPLOAD_SIZE = 1024 * 1024 * 2;
 
     let uploading = false;
-    let numUploaded = 0;
+    let numUploadedFiles = 0;
+    let numUploadedMsg = 0;
 
+    let done_encrypting_files = false;
     let done_encrypting_msg = false;
 
-    const check_adn_upload_msg = () => {
+    let done_uploading_files = false;
+
+    const check_and_upload = () => {
         if (!uploading) {
+            if (!done_uploading_files) {
+                let [keys, size] = getKeysWithinSizeLimit(
+                    encryptedFiles,
+                    THRESHOLD_BATCH_IMG_UPLOAD_SIZE
+                );
+                if (keys.length === 0 && !done_encrypting_files) return;
+                else if (keys.length === 0) {
+                    keys = Object.keys(encryptedFiles);
+                    done_uploading_files = true;
+                }
+                const toUploadDict = {};
+                let numFiles = 0;
+                for (let key of keys) {
+                    numFiles++;
+                    toUploadDict[key] = encryptedFiles[key];
+                    delete encryptedFiles[key];
+                }
+                uploading = true;
+                return new Promise(async (resolve, reject) => {
+                    await sleep(200 + size / 30000);
+                    numUploadedFiles += numFiles;
+                    setUploadModalState((old) => {
+                        return {
+                            ...old,
+                            pg2:
+                                (numUploadedFiles / num_files) *
+                                pg2_percentage_phase1,
+                            pg2_comment: `Uploading files ${numUploadedFiles}/${num_files}`,
+                        };
+                    });
+                    uploading = false;
+                    resolve(true);
+                });
+            }
             let [keys, size] = getKeysWithinSizeLimit(
                 encryptedMessages,
-                THRESHOLD_BATCH_UPLOAD_SIZE
+                THRESHOLD_BATCH_MSG_UPLOAD_SIZE
             );
             if (keys.length === 0 && !done_encrypting_msg) return;
             else if (keys.length === 0) {
@@ -217,13 +291,16 @@ export const conversationUploadLogic = async (
             }
             uploading = true;
             return new Promise(async (resolve, reject) => {
-                await sleep(400+size);
-                numUploaded += numMsg;
+                await sleep(200 + size / 300);
+                numUploadedMsg += numMsg;
                 setUploadModalState((old) => {
                     return {
                         ...old,
-                        pg2: (numUploaded / messageCount) * 100,
-                        pg2_comment: `Uploading ${numUploaded}/${messageCount}`,
+                        pg2:
+                            pg2_percentage_phase1 +
+                            (numUploadedMsg / messageCount) *
+                                (100 - pg2_percentage_phase1),
+                        pg2_comment: `Uploading messages ${numUploadedMsg}/${messageCount}`,
                     };
                 });
                 uploading = false;
@@ -232,7 +309,7 @@ export const conversationUploadLogic = async (
         }
     };
 
-    const senderKey  = await deriveKeyFromMaster(
+    const senderKey = await deriveKeyFromMaster(
         conversationKeyString,
         "sender",
         keySize
@@ -242,11 +319,70 @@ export const conversationUploadLogic = async (
         return {
             ...old,
             pg2: 0,
-            pg2_comment: `Uploading 0/${messageCount}`,
+            pg2_comment: `Uploading files 0/${num_files}`,
         };
     });
+
+    let pg1timeTracker = Date.now() - 2000;
+
+    // Loop over files
+    let current_idx = 0;
+    for (const [filename, index] of Object.entries(files_needed)) {
+        const fileData = file[index];
+        const fileContent = fileData.content;
+        const mimeType = fileData.mimeType;
+
+        const encryptedFile = await encryptFile(
+            {
+                filename,
+                content: fileContent,
+                mimeType,
+                size: fileData.size,
+            },
+            senderKey
+        );
+        encryptedFiles[current_idx] = encryptedFile;
+        file[index].content = null;
+        check_and_upload();
+        const current_idx_safe = current_idx + 1;
+        const pg1 = (current_idx_safe / num_files) * pg1_percentage_phase1 + 1;
+        if (Date.now() - pg1timeTracker > 50) {
+            pg1timeTracker = Date.now();
+            setUploadModalState((old) => {
+                return {
+                    ...old,
+                    pg1: pg1,
+                    pg1_comment: `Encrypting files: ${current_idx_safe}/${num_files}`,
+                };
+            });
+        } else {
+            setUploadModalState((old) => {
+                return {
+                    ...old,
+                    pg1_comment: `Encrypting files: ${current_idx_safe}/${num_files}`,
+                };
+            });
+        }
+        current_idx++;
+    }
+    setUploadModalState((old) => {
+        return {
+            ...old,
+            pg1: pg1_percentage_phase1 + 1,
+            pg1_comment: `Encrypting files: ${num_files}/${num_files}`,
+        };
+    });
+    done_encrypting_files = true;
+    pg1timeTracker = Date.now();
+
     let [oldVault, oldBlock, oldGroup, oldChunk] = [-1, -1, -1, -1];
-    let [vaultKey, blockKey, groupKey, chunkKey, messageKey] = [null, null, null, null, null];
+    let [vaultKey, blockKey, groupKey, chunkKey, messageKey] = [
+        null,
+        null,
+        null,
+        null,
+        null,
+    ];
     // Loop over messages
     for (let i = 0; i < messages.length; i++) {
         const { vault, block, group, chunk } = MSG.indexToHierarchy(i);
@@ -301,17 +437,19 @@ export const conversationUploadLogic = async (
         }
         if (chunk !== oldChunk) {
             try {
-                chunkKey = await exportAESKeyToBase64(await deriveKeyFromMaster(
-                    groupKey,
-                    `chunk-${vault.toString().padStart(6, "0")}.${block
-                        .toString()
-                        .padStart(2, "0")}.${group
-                        .toString()
-                        .padStart(2, "0")}.${chunk
-                        .toString()
-                        .padStart(2, "0")}`,
-                    keySize
-                ));
+                chunkKey = await exportAESKeyToBase64(
+                    await deriveKeyFromMaster(
+                        groupKey,
+                        `chunk-${vault.toString().padStart(6, "0")}.${block
+                            .toString()
+                            .padStart(2, "0")}.${group
+                            .toString()
+                            .padStart(2, "0")}.${chunk
+                            .toString()
+                            .padStart(2, "0")}`,
+                        keySize
+                    )
+                );
             } catch (e) {
                 console.error("Error deriving chunk key:", e);
                 throw e;
@@ -324,39 +462,65 @@ export const conversationUploadLogic = async (
                     .toString()
                     .padStart(2, "0")}.${group
                     .toString()
-                    .padStart(2, "0")}.${chunk
+                    .padStart(2, "0")}.${chunk.toString().padStart(2, "0")}.${i
                     .toString()
-                    .padStart(2, "0")}.${i.toString().padStart(2, "0")}`,
+                    .padStart(2, "0")}`,
                 keySize
             );
         } catch (e) {
             console.error("Error deriving chunk key:", e);
             throw e;
         }
-        
-        const encryptedMessage = await encryptMessage(messages[i], messageKey, senderKey);
-        encryptedMessages[i] = encryptedMessage;
+
+        const encryptedMessage = await encryptMessage(
+            messages[i],
+            messageKey,
+            senderKey
+        );
+        encryptedMessages[i] = { index: i, ...encryptedMessage };
         messages[i] = null;
-        check_adn_upload_msg();
+        check_and_upload();
         const current_idx = i + 1;
-        setUploadModalState((old) => {
-            return {
-                ...old,
-                pg1: (current_idx / messageCount) * 100,
-                pg1_comment: `Encrypting messages: ${current_idx}/${messageCount}`,
-            };
-        });
+        const pg1 =
+            (current_idx / messageCount) * (99 - pg1_percentage_phase1) +
+            pg1_percentage_phase1 +
+            1;
+        const current_idx_safe = current_idx;
+        if (Date.now() - pg1timeTracker > 50) {
+            pg1timeTracker = Date.now();
+            setUploadModalState((old) => {
+                return {
+                    ...old,
+                    pg1: pg1,
+                    pg1_comment: `Encrypting messages: ${current_idx_safe}/${messageCount}`,
+                };
+            });
+        } else {
+            setUploadModalState((old) => {
+                return {
+                    ...old,
+                    pg1_comment: `Encrypting messages: ${current_idx_safe}/${messageCount}`,
+                };
+            });
+        }
         oldVault = vault;
         oldBlock = block;
         oldGroup = group;
         oldChunk = chunk;
     }
+    setUploadModalState((old) => {
+        return {
+            ...old,
+            pg1: 100,
+            pg1_comment: `Encrypting messages: ${messageCount}/${messageCount}`,
+        };
+    });
 
     done_encrypting_msg = true;
 
     while (Object.keys(encryptedMessages).length > 0) {
-        await check_adn_upload_msg();
-        await sleep(100);
+        await check_and_upload();
+        await sleep(10);
     }
 };
 

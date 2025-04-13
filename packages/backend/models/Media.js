@@ -18,18 +18,13 @@ const MediaSchema = new mongoose.Schema({
 
     // Encrypted media blob (only if inline)
     data: {
-        type: Buffer,
+        ciphertext: { type: Buffer, required: true },
+        iv: { type: String, required: true },
     },
 
     // External location (e.g., URL or Drive ID, only if external)
     location: {
         type: String,
-    },
-
-    // Encrypted AES key (common to both)
-    encryptedKey: {
-        type: String,
-        required: true,
     },
 
     // MIME type: image/jpeg, video/mp4, audio/ogg, etc.
@@ -39,7 +34,7 @@ const MediaSchema = new mongoose.Schema({
     },
 
     // Optional metadata
-    originalName: String,
+    name: String,
     size: Number, // in bytes
     width: Number, // if image/video
     height: Number, // if image/video
