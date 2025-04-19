@@ -91,7 +91,7 @@ const AddConversation = () => {
         const encryptedAesKeyString = uint8ArrayToBase64(encryptedAesKey);
 
         secureAxios
-            .post("/api/add-convo", {
+            .post("/api/convo", {
                 title: conversationName.trim(),
                 description,
                 color,

@@ -42,9 +42,7 @@ const messageSchema = new mongoose.Schema({
         encryptedMediaKey: {
             ciphertext: { type: String , required: true},
             iv: { type: String, required: true },
-        },
-        derivedKeyLevel: String,
-        path: [String],
+        }
     },
 
     // Optional field for search support (hashed or HMACed value of plaintext)

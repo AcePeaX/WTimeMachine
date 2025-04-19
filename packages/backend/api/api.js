@@ -1,5 +1,6 @@
 // api.js
 import { Router } from "express";
+import multer from "multer";
 
 import { User } from '../models/User.js';
 
@@ -11,9 +12,12 @@ import crypto from "crypto";
 import { verifyMessage } from '@timemachine/security';
 
 import { addConvo } from "./convo-handler.js";
+import { uploadMedia } from "./message-handler.js";
 
 
 const apiRouter = Router();
+
+const upload = multer({ dest: './resources/uploads/' });
 
 // Registration route
 apiRouter.post("/register", async (req, res) => {
@@ -84,13 +88,16 @@ apiRouter.post("/login", authenticate, async (req, res) => {
     res.status(200).send({username: req.user.username, state: 0});
 })
 
+apiRouter.post("/media/:convoId", upload.any(), authenticate, encryptResponse, uploadMedia);
+
 apiRouter.use(authenticate, encryptResponse);
 
 apiRouter.post("/user", (req, res) => {
     res.status(200).send({ username: req.user.username, state: 0 });
 })
 
-apiRouter.post("/add-convo", addConvo);
+apiRouter.post("/convo", addConvo);
+
 
 
 

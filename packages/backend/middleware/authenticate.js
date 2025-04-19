@@ -1,3 +1,4 @@
+import { logger } from '@timemachine/utils';
 import { User } from '../models/User.js';
 import { verifyMessage } from '@timemachine/security';
 
@@ -43,6 +44,7 @@ export async function authenticate(req, res, next) {
       next();
   
     } catch (err) {
+      logger.error({err},'Error in authentication middleware');
       res.status(500).send({ error: 'Error authenticating user.', state: -1 });
     }
   }

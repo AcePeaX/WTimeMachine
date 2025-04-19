@@ -1,5 +1,5 @@
 import secureAxios from "./secure-axios";
-import { deriveKeyFromMaster, exportAESKeyToBase64 } from "./security";
+import { deriveKeyFromMaster, exportAESKeyToBase64, generateAESKey } from "./security";
 import * as MSG from "./messages.js";
 import { unzipSync, strFromU8 } from "fflate";
 import {
@@ -199,8 +199,6 @@ export const conversationUploadLogic = async (
 
     const message_size = Math.max(file[0].size, messageCount * 10000);
 
-    console.log(total_file_size / (message_size + total_file_size));
-
     const pg1_percentage_phase1 =
         Math.min(
             Math.max(total_file_size / (message_size + total_file_size), 0.3),
@@ -225,6 +223,8 @@ export const conversationUploadLogic = async (
     const encryptedMessages = {};
     const encryptedFiles = {};
 
+    const fileOriginalName_to_encryptedName = {};
+    const encryptedFileName_to_id = {};
 
     const THRESHOLD_BATCH_MSG_UPLOAD_SIZE = 1024 * 5;
     const THRESHOLD_BATCH_IMG_UPLOAD_SIZE = 1024 * 1024 * 2;
@@ -259,7 +259,62 @@ export const conversationUploadLogic = async (
                 }
                 uploading = true;
                 return new Promise(async (resolve, reject) => {
-                    await sleep(200 + size / 30000);
+                    let result = null;
+                    try {
+                        // Create a FormData object to handle the files and other data
+                        const formData = new FormData();
+
+                        // Loop through your files (toUploadDict) and append them to the FormData
+                        Object.values(toUploadDict).forEach(
+                            (fileData, index) => {
+                                // Convert Uint8Array to Blob
+                                const contentBlob = new Blob(
+                                    [fileData.content.ciphertext],
+                                    { type: fileData.mimeType }
+                                );
+
+                                // Append the file (ciphertext as Blob) with a unique field name (e.g., 'file_0', 'file_1', etc.)
+                                formData.append(
+                                    `file_${index}`,
+                                    contentBlob,
+                                    fileData.filename
+                                );
+
+                                // Append metadata (iv, mimeType, size) with unique field names too
+                                formData.append(
+                                    `file_${index}_iv`,
+                                    fileData.content.iv
+                                );
+                                formData.append(
+                                    `file_${index}_mimeType`,
+                                    fileData.mimeType
+                                );
+                                formData.append(
+                                    `file_${index}_size`,
+                                    fileData.size
+                                );
+                            }
+                        );
+                        if (Object.values(toUploadDict).length === 0) {
+                            resolve(true);
+                            return;
+                        }
+                        result = await secureAxios.post(
+                            `/api/media/${conv_id}`,
+                            formData,
+                            {
+                                headers: {
+                                    "Content-Type": "multipart/form-data", // Ensure the correct content type for file uploads
+                                },
+                            }
+                        );
+                        for(const file in result.data.media) {
+                            encryptedFileName_to_id[file] = result.data.media[file].id;
+                        }
+                    } catch (e) {
+                        console.error("Error uploading files:", e);
+                        throw e;
+                    }
                     numUploadedFiles += numFiles;
                     setUploadModalState((old) => {
                         return {
@@ -325,12 +380,16 @@ export const conversationUploadLogic = async (
 
     let pg1timeTracker = Date.now() - 2000;
 
+    const filename_to_key = {};
+
     // Loop over files
     let current_idx = 0;
     for (const [filename, index] of Object.entries(files_needed)) {
         const fileData = file[index];
         const fileContent = fileData.content;
         const mimeType = fileData.mimeType;
+
+        const uniqueKey = await generateAESKey(keySize);
 
         const encryptedFile = await encryptFile(
             {
@@ -339,9 +398,11 @@ export const conversationUploadLogic = async (
                 mimeType,
                 size: fileData.size,
             },
-            senderKey
+            uniqueKey
         );
         encryptedFiles[current_idx] = encryptedFile;
+        filename_to_key[filename] = await exportAESKeyToBase64(uniqueKey);
+        fileOriginalName_to_encryptedName[filename] = encryptedFile.filename;
         file[index].content = null;
         check_and_upload();
         const current_idx_safe = current_idx + 1;
@@ -471,6 +532,32 @@ export const conversationUploadLogic = async (
             console.error("Error deriving chunk key:", e);
             throw e;
         }
+
+        if(messages[i].type==="media"){
+            const fileIndex = files_needed[messages[i].content];
+            if (fileIndex === undefined) {
+                console.error("File index not found for media message.");
+                continue;
+            }
+            const fileKey = filename_to_key[messages[i].content];
+            messages[i].content = {
+                ciphertext: messages[i].content,
+                iv: fileKey,
+                filename: fileOriginalName_to_encryptedName[messages[i].content],
+                mimeType: file[fileIndex].mimeType,
+                size: file[fileIndex].size,
+            };
+            const encFileName=messages[i].content.filename
+            while(encryptedFileName_to_id[encFileName]===undefined){
+                await sleep(20);
+                check_and_upload();
+            }
+            messages[i].mediaRef = {
+                mediaId: encryptedFileName_to_id[messages[i].content.filename],
+                encryptedMediaKey: fileKey
+            };
+        }
+
 
         const encryptedMessage = await encryptMessage(
             messages[i],
