@@ -1,12 +1,15 @@
 import secureAxios from "./secure-axios";
-import { deriveKeyFromMaster, exportAESKeyToBase64, generateAESKey } from "./security";
+import {
+    deriveKeyFromMaster,
+    exportAESKeyToBase64,
+    generateAESKey,
+} from "./security";
 import * as MSG from "./messages.js";
 import { unzipSync, strFromU8 } from "fflate";
 import {
     encryptMessage,
     getMimeTypeFromFilename,
     encryptFile,
-    decryptFile,
 } from "./messages.js";
 
 function splitOnce(str, delimiter) {
@@ -241,7 +244,7 @@ export const conversationUploadLogic = async (
     const check_and_upload = () => {
         if (!uploading) {
             if (!done_uploading_files) {
-                let [keys, size] = getKeysWithinSizeLimit(
+                let [keys] = getKeysWithinSizeLimit(
                     encryptedFiles,
                     THRESHOLD_BATCH_IMG_UPLOAD_SIZE
                 );
@@ -308,8 +311,9 @@ export const conversationUploadLogic = async (
                                 },
                             }
                         );
-                        for(const file in result.data.media) {
-                            encryptedFileName_to_id[file] = result.data.media[file].id;
+                        for (const file in result.data.media) {
+                            encryptedFileName_to_id[file] =
+                                result.data.media[file].id;
                         }
                     } catch (e) {
                         console.error("Error uploading files:", e);
@@ -533,7 +537,7 @@ export const conversationUploadLogic = async (
             throw e;
         }
 
-        if(messages[i].type==="media"){
+        if (messages[i].type === "media") {
             const fileIndex = files_needed[messages[i].content];
             if (fileIndex === undefined) {
                 console.error("File index not found for media message.");
@@ -543,21 +547,21 @@ export const conversationUploadLogic = async (
             messages[i].content = {
                 ciphertext: messages[i].content,
                 iv: fileKey,
-                filename: fileOriginalName_to_encryptedName[messages[i].content],
+                filename:
+                    fileOriginalName_to_encryptedName[messages[i].content],
                 mimeType: file[fileIndex].mimeType,
                 size: file[fileIndex].size,
             };
-            const encFileName=messages[i].content.filename
-            while(encryptedFileName_to_id[encFileName]===undefined){
+            const encFileName = messages[i].content.filename;
+            while (encryptedFileName_to_id[encFileName] === undefined) {
                 await sleep(20);
                 check_and_upload();
             }
             messages[i].mediaRef = {
                 mediaId: encryptedFileName_to_id[messages[i].content.filename],
-                encryptedMediaKey: fileKey
+                encryptedMediaKey: fileKey,
             };
         }
-
 
         const encryptedMessage = await encryptMessage(
             messages[i],

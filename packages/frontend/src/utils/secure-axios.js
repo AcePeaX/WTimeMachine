@@ -21,24 +21,6 @@ const buildMessageForFormData = (fd) => {
     return { filesInfo };
 };
 
-function formDataToObject(formData) {
-    const obj = {};
-    formData.forEach((value, key) => {
-        if (value instanceof Blob) {
-            obj[key] = {
-                _type: 'Blob',
-                name: value.name,
-                size: value.size,
-                type: value.type,
-            };
-        } else {
-            obj[key] = value;
-        }
-    });
-    return obj;
-}
-
-
 const isFormData = (obj) =>
     obj && typeof FormData !== "undefined" && obj instanceof FormData;
 
