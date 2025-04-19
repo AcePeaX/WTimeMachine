@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useNavigate } from 'react-router-dom';
 import "./AddConversation.css";
 import secureAxios from "../utils/secure-axios";
 import { Upload, Info } from "lucide-react";
@@ -49,6 +50,8 @@ const AddConversation = () => {
     const [uploadedFile, setUploadedFile] = useState(null);
     const [color, setColor] = useState("#7C3AED");
     const [aesSize, setAESSize] = useState("256");
+
+    const navigate = useNavigate();
 
     const [uploadModal, setUploadModal] = useState({
         open: false,
@@ -103,6 +106,12 @@ const AddConversation = () => {
                 // Handle successful conversation creation
                 if (uploadedFile) {
                     await conversationUploadLogic(setUploadModal, response.data.convoId, uploadedFile, aesKeyString, parseInt(aesSize));
+                    
+                    setTimeout(() => {
+                        setUploadModal({ ...uploadModal, open: false });
+                        navigate("/conversations/"+response.data.convoId);
+                    }
+                    , 2000);
                 }
             })
             .catch((error) => {
@@ -239,7 +248,7 @@ const AddConversation = () => {
                 </center>
             </QuickModal>
             <div className="conv-upload-modal-targetter">
-                <Modal isOpen={uploadModal.open} onClose={() => {setUploadModal({ ...uploadModal, open: false })}}>
+                <Modal isOpen={uploadModal.open}>
                     <div className="conv-upload-modal">
                         <h2>Uploading Conversation</h2>
                         <div className="pg-comment">{uploadModal.pg1_comment}</div>

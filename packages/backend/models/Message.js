@@ -5,17 +5,16 @@ const messageSchema = new mongoose.Schema({
     sequence: { type: Number, required: true },
     sender: {
         type: String,
-        required: true,
+        default: null,
         validate: {
             validator: function (v) {
                 return typeof v === "string" || v === null;
             },
             message: "Sender must be a string or null",
         },
-        default: null,
     },
 
-    timestamp: { type: Number, required: true },
+    date: { type: Date, required: true },
     type: { type: String, enum: ["text", "media"], required: true },
 
     hierarchy: {
@@ -28,21 +27,27 @@ const messageSchema = new mongoose.Schema({
 
     // For text messages only
     content: {
-        ciphertext: { type: String , required: true},
-        iv: { type: String, required: true },
+        ciphertext: { type: String },
+        iv: { type: String },
         metadata: {
             encoding: String,
             lang: String,
-        }
+        },
     },
 
     // For media messages only
     mediaRef: {
         mediaId: mongoose.Types.ObjectId,
         encryptedMediaKey: {
-            ciphertext: { type: String , required: true},
-            iv: { type: String, required: true },
-        }
+            ciphertext: { type: String },
+            iv: { type: String },
+        },
+    },
+
+    uploader: {
+        type: String,
+        required: true,
+        default: null,
     },
 
     // Optional field for search support (hashed or HMACed value of plaintext)
@@ -55,17 +60,25 @@ const messageSchema = new mongoose.Schema({
 // Conditional validation based on type
 messageSchema.pre("validate", function (next) {
     if (this.type === "text") {
-        if (!this.content?.ciphertext) {
-            return next(new Error("Text messages require content.ciphertext"));
-        }
-        this.mediaRef = undefined; // strip mediaRef if not needed
-    } else if (this.type === "media") {
-        if (!this.mediaRef?.mediaId || !this.mediaRef?.encryptedMediaKey) {
+        if (!this.content?.ciphertext || !this.content?.iv) {
             return next(
-                new Error("Media messages require mediaRef with encrypted key")
+                new Error("Text messages require content.ciphertext and iv")
             );
         }
-        this.content = undefined; // strip text content
+        this.mediaRef = undefined;
+    } else if (this.type === "media") {
+        if (
+            !this.mediaRef?.mediaId ||
+            !this.mediaRef?.encryptedMediaKey?.ciphertext ||
+            !this.mediaRef?.encryptedMediaKey?.iv
+        ) {
+            return next(
+                new Error(
+                    "Media messages require mediaRef with encryptedMediaKey"
+                )
+            );
+        }
+        this.content = undefined;
     } else {
         return next(new Error("Invalid message type"));
     }

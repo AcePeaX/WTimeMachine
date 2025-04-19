@@ -79,4 +79,4 @@ GrantBundleSchema.pre("validate", function (next) {
     next();
 });
 
-export const Grant = mongoose.model("UserGrantBundle", GrantBundleSchema);
+export const Grant = mongoose.model("grants", GrantBundleSchema);

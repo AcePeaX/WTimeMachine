@@ -1,6 +1,7 @@
 import secureAxios from "./secure-axios";
 import {
     deriveKeyFromMaster,
+    encryptAESGCM,
     exportAESKeyToBase64,
     generateAESKey,
 } from "./security";
@@ -200,16 +201,22 @@ export const conversationUploadLogic = async (
         total_file_size += size;
     }
 
-    const message_size = Math.max(file[0].size, messageCount * 10000);
+    const message_size = Math.max(file[0].size, messageCount * 20000);
 
     const pg1_percentage_phase1 =
         Math.min(
-            Math.max(total_file_size / (message_size + total_file_size), 0.3),
+            Math.max(
+                total_file_size / (message_size + total_file_size),
+                total_file_size === 0 ? 0 : 0.3
+            ),
             0.7
         ) * 99;
     const pg2_percentage_phase1 =
         Math.min(
-            Math.max(total_file_size / (message_size + total_file_size), 0.1),
+            Math.max(
+                total_file_size / (message_size + total_file_size),
+                total_file_size === 0 ? 0 : 0.1
+            ),
             0.9
         ) * 100;
 
@@ -229,7 +236,7 @@ export const conversationUploadLogic = async (
     const fileOriginalName_to_encryptedName = {};
     const encryptedFileName_to_id = {};
 
-    const THRESHOLD_BATCH_MSG_UPLOAD_SIZE = 1024 * 5;
+    const THRESHOLD_BATCH_MSG_UPLOAD_SIZE = 1024 * 50;
     const THRESHOLD_BATCH_IMG_UPLOAD_SIZE = 1024 * 1024 * 2;
 
     let uploading = false;
@@ -241,9 +248,20 @@ export const conversationUploadLogic = async (
 
     let done_uploading_files = false;
 
+    let encrypting_files_start_time = Date.now();
+    let encrypting_msg_start_time = Date.now();
+
+    let never_uploaded_a_file = true;
+    let uploading_files_start_time = Date.now();
+    let uploading_msg_start_time = Date.now();
+
     const check_and_upload = () => {
         if (!uploading) {
             if (!done_uploading_files) {
+                if (never_uploaded_a_file) {
+                    uploading_files_start_time = Date.now();
+                    never_uploaded_a_file = false;
+                }
                 let [keys] = getKeysWithinSizeLimit(
                     encryptedFiles,
                     THRESHOLD_BATCH_IMG_UPLOAD_SIZE
@@ -251,7 +269,13 @@ export const conversationUploadLogic = async (
                 if (keys.length === 0 && !done_encrypting_files) return;
                 else if (keys.length === 0) {
                     keys = Object.keys(encryptedFiles);
-                    done_uploading_files = true;
+                    setUploadModalState((old) => {
+                        return {
+                            ...old,
+                            pg2: pg2_percentage_phase1,
+                            pg2_comment: `Uploading messages 0/${messageCount}`,
+                        };
+                    });
                 }
                 const toUploadDict = {};
                 let numFiles = 0;
@@ -321,20 +345,36 @@ export const conversationUploadLogic = async (
                         throw e;
                     }
                     numUploadedFiles += numFiles;
+                    let ETA_string = "";
+                    if (
+                        Date.now() - uploading_files_start_time > 5000 &&
+                        numUploadedFiles < num_files
+                    ) {
+                        ETA_string = ` - ETA: ${formatDuration(
+                            Math.round(
+                                ((num_files - numUploadedFiles) *
+                                    (Date.now() - uploading_files_start_time)) /
+                                    numUploadedFiles
+                            )
+                        )}`;
+                    }
+                    if (numUploadedFiles === num_files) {
+                        done_uploading_files = true;
+                    }
                     setUploadModalState((old) => {
                         return {
                             ...old,
                             pg2:
                                 (numUploadedFiles / num_files) *
                                 pg2_percentage_phase1,
-                            pg2_comment: `Uploading files ${numUploadedFiles}/${num_files}`,
+                            pg2_comment: `Uploading files ${numUploadedFiles}/${num_files}${ETA_string}`,
                         };
                     });
                     uploading = false;
                     resolve(true);
                 });
             }
-            let [keys, size] = getKeysWithinSizeLimit(
+            let [keys] = getKeysWithinSizeLimit(
                 encryptedMessages,
                 THRESHOLD_BATCH_MSG_UPLOAD_SIZE
             );
@@ -351,16 +391,36 @@ export const conversationUploadLogic = async (
             }
             uploading = true;
             return new Promise(async (resolve, reject) => {
-                await sleep(200 + size / 300);
+                const messagesPayload = Object.values(toUploadDict).sort(
+                    (a, b) => a.index - b.index
+                );
+                try {
+                    await secureAxios.post(`/api/message/${conv_id}`, {
+                        messages: messagesPayload,
+                    });
+                } catch (e) {
+                    console.error("Error uploading files:", e);
+                    throw e;
+                }
                 numUploadedMsg += numMsg;
                 setUploadModalState((old) => {
+                    let ETA_string = "";
+                    if (Date.now() - uploading_msg_start_time > 5000 && numUploadedMsg < messageCount) {
+                        ETA_string = ` - ETA: ${formatDuration(
+                            Math.round(
+                                ((messageCount - numUploadedMsg) *
+                                    (Date.now() - uploading_msg_start_time)) /
+                                    numUploadedMsg
+                            )
+                        )}`;
+                    }
                     return {
                         ...old,
                         pg2:
                             pg2_percentage_phase1 +
                             (numUploadedMsg / messageCount) *
                                 (100 - pg2_percentage_phase1),
-                        pg2_comment: `Uploading messages ${numUploadedMsg}/${messageCount}`,
+                        pg2_comment: `Uploading messages ${numUploadedMsg}/${messageCount}${ETA_string}`,
                     };
                 });
                 uploading = false;
@@ -386,6 +446,9 @@ export const conversationUploadLogic = async (
     let pg1timeTracker = Date.now() - 2000;
 
     const filename_to_key = {};
+
+    encrypting_files_start_time = Date.now();
+    let ETA_string = "";
 
     // Loop over files
     let current_idx = 0;
@@ -414,18 +477,29 @@ export const conversationUploadLogic = async (
         const pg1 = (current_idx_safe / num_files) * pg1_percentage_phase1 + 1;
         if (Date.now() - pg1timeTracker > 50) {
             pg1timeTracker = Date.now();
+            if (Date.now() - encrypting_files_start_time > 5000) {
+                ETA_string = ` - ETA: ${formatDuration(
+                    Math.round(
+                        ((num_files - current_idx_safe) *
+                            (Date.now() - encrypting_files_start_time)) /
+                            current_idx_safe
+                    )
+                )}`;
+            }
+            const eta_const = ETA_string;
             setUploadModalState((old) => {
                 return {
                     ...old,
                     pg1: pg1,
-                    pg1_comment: `Encrypting files: ${current_idx_safe}/${num_files}`,
+                    pg1_comment: `Encrypting files: ${current_idx_safe}/${num_files}${eta_const}`,
                 };
             });
         } else {
+            const eta_const = ETA_string;
             setUploadModalState((old) => {
                 return {
                     ...old,
-                    pg1_comment: `Encrypting files: ${current_idx_safe}/${num_files}`,
+                    pg1_comment: `Encrypting files: ${current_idx_safe}/${num_files}${eta_const}`,
                 };
             });
         }
@@ -449,6 +523,10 @@ export const conversationUploadLogic = async (
         null,
         null,
     ];
+
+    encrypting_msg_start_time = Date.now();
+    ETA_string = "";
+
     // Loop over messages
     for (let i = 0; i < messages.length; i++) {
         const { vault, block, group, chunk } = MSG.indexToHierarchy(i);
@@ -560,7 +638,7 @@ export const conversationUploadLogic = async (
             }
             messages[i].mediaRef = {
                 mediaId: encryptedFileName_to_id[messages[i].content.filename],
-                encryptedMediaKey: fileKey,
+                encryptedMediaKey: await encryptAESGCM(fileKey, messageKey),
             };
         }
 
@@ -569,7 +647,11 @@ export const conversationUploadLogic = async (
             messageKey,
             senderKey
         );
-        encryptedMessages[i] = { index: i, ...encryptedMessage };
+        encryptedMessages[i] = {
+            index: i,
+            date: messages[i].date,
+            ...encryptedMessage,
+        };
         messages[i] = null;
         check_and_upload();
         const current_idx = i + 1;
@@ -578,20 +660,32 @@ export const conversationUploadLogic = async (
             pg1_percentage_phase1 +
             1;
         const current_idx_safe = current_idx;
-        if (Date.now() - pg1timeTracker > 50) {
+
+        if (Date.now() - pg1timeTracker > 80) {
+            if (Date.now() - encrypting_msg_start_time > 5000) {
+                ETA_string = ` - ETA: ${formatDuration(
+                    Math.round(
+                        ((messageCount - current_idx_safe) *
+                            (Date.now() - encrypting_msg_start_time)) /
+                            current_idx_safe
+                    )
+                )}`;
+            }
+            const eta_const = ETA_string;
             pg1timeTracker = Date.now();
             setUploadModalState((old) => {
                 return {
                     ...old,
                     pg1: pg1,
-                    pg1_comment: `Encrypting messages: ${current_idx_safe}/${messageCount}`,
+                    pg1_comment: `Encrypting messages: ${current_idx_safe}/${messageCount}${eta_const}`,
                 };
             });
         } else {
+            const eta_const = ETA_string;
             setUploadModalState((old) => {
                 return {
                     ...old,
-                    pg1_comment: `Encrypting messages: ${current_idx_safe}/${messageCount}`,
+                    pg1_comment: `Encrypting messages: ${current_idx_safe}/${messageCount}${eta_const}`,
                 };
             });
         }
@@ -614,6 +708,7 @@ export const conversationUploadLogic = async (
         await check_and_upload();
         await sleep(10);
     }
+    return 1;
 };
 
 /**
@@ -643,4 +738,19 @@ function getKeysWithinSizeLimit(dict, maxBytes) {
 
 function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function formatDuration(ms) {
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    const paddedMinutes =
+        hours > 0 ? String(minutes).padStart(2, "0") : String(minutes);
+    const paddedSeconds = String(seconds).padStart(2, "0");
+
+    return hours > 0
+        ? `${hours}:${paddedMinutes}:${paddedSeconds}`
+        : `${paddedMinutes}:${paddedSeconds}`;
 }
