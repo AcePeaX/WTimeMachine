@@ -57,13 +57,11 @@ export const uploadMedia = async (req, res) => {
                 id: saved._id,
             };
         }
-        setTimeout(() => {
-            res.status(200).json({
-                message: "Media uploaded successfully.",
-                media: savedMedia,
-            });
-        }, 2000);
-         
+
+        return res.status(200).json({
+            message: "Media uploaded successfully.",
+            media: savedMedia,
+        });
     } catch (err) {
         logger.error({ err }, "Upload error");
         return res.status(500).json({ error: "Internal server error." });

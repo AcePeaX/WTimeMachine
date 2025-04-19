@@ -299,6 +299,7 @@ export const conversationUploadLogic = async (
                             }
                         );
                         if (Object.values(toUploadDict).length === 0) {
+                            uploading = false;
                             resolve(true);
                             return;
                         }
