@@ -8,6 +8,7 @@ import { useCallback, useEffect } from "react";
 import Sidebar from "./utils/Sidebar";
 import AddConversation from "./pages/AddConversation";
 import "./App.css";
+import { ConversationViewer } from "./pages/Conversation";
 
 //<Route path="/dashboard" element={<Dashboard />} />
 function App() {
@@ -23,6 +24,7 @@ function App() {
                             <div className="main-content">
                                 <Routes>
                                     <Route path="/add-conv" element={<AddConversation />} />
+                                    <Route path="/conversations/:convId" element={<ConversationViewer />} />
                                     <Route path="*" element={<div>Page Not Found</div>} />
                                 </Routes>
                             </div>
