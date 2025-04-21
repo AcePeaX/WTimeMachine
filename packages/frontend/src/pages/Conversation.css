@@ -40,7 +40,8 @@
 }
 
 .spectate-bar select {
-    width: 90%;
+    width: unset;
+    margin-bottom: 0px;
 }
 
 /* Message Area */

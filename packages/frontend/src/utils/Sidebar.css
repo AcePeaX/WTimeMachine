@@ -129,6 +129,8 @@
     display: flex;
     padding: 0.5rem;
     background-color: rgba(0, 0, 0, 0.03);
+    border-right-width: 7px;
+    border-right-style: solid;
     border-radius: 6px;
     cursor: pointer;
     font-size: 0.9rem;
@@ -140,6 +142,7 @@
 
 .conversation-item:hover {
     background-color: rgba(0, 0, 0, 0.08);
+    border-right-width: 10px;
 }
 
 .sidebar-footer {

@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import "./MessageUI.css";
 
 export const MessageBubble = ({ msg, isSpectator }) => {

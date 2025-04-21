@@ -81,7 +81,7 @@ const Sidebar = () => {
                             className="conversation-item"
                             style={{
                                 justifyContent: collapsed ? "center" : "start",
-                                borderRight: `7px solid ${conv.color}`,
+                                borderRightColor: `${conv.color}`,
                                 paddingLeft: collapsed ? "0" : "8px",
                             }}
                         >
