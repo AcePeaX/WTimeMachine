@@ -1,5 +1,5 @@
 // AppProvider.js
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useCallback, useContext, useState } from "react";
 
 // Create the context
 const AppContext = createContext();
@@ -9,6 +9,12 @@ export const AppProvider = ({ children }) => {
     const [currentUser, setCurrentUser] = useState(null); // { username, key, etc. }
     const [theme, setTheme] = useState("soft-tech");
     const [modalOpen, setModalOpen] = useState(false);
+
+    const [navReloadTracker, setReloadTracker] = useState(0);
+
+    const reloadNav = useCallback(() => {
+        setReloadTracker((prev) => prev + 1);
+    }, [setReloadTracker]);
 
     const [preferredUrl, setPreferredUrl] = useState("/dashboard");
 
@@ -21,6 +27,8 @@ export const AppProvider = ({ children }) => {
         setModalOpen,
         preferredUrl,
         setPreferredUrl,
+        navReloadTracker,
+        reloadNav
     };
 
     return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

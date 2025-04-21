@@ -11,7 +11,7 @@ import { encryptResponse } from '../middleware/encryptResponse.js';
 import crypto from "crypto";
 import { verifyMessage } from '@timemachine/security';
 
-import { addConvo } from "./convo-handler.js";
+import { addConvo, getUserConversations } from "./convo-handler.js";
 import { uploadMedia, uploadMessage } from "./message-handler.js";
 
 
@@ -95,6 +95,8 @@ apiRouter.use(authenticate, encryptResponse);
 apiRouter.post("/user", (req, res) => {
     res.status(200).send({ username: req.user.username, state: 0 });
 })
+
+apiRouter.get("/convo", getUserConversations);
 
 apiRouter.post("/convo", addConvo);
 

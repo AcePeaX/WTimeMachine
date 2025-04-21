@@ -23,7 +23,6 @@ const buildMessageForFormData = (fd) => {
 
 const isFormData = (obj) =>
     obj && typeof FormData !== "undefined" && obj instanceof FormData;
-
 secureAxios.interceptors.request.use(async (config) => {
     const user = loadSessionUser();
     if (!user?.privateKey || !user?.username) return config;
@@ -34,38 +33,46 @@ secureAxios.interceptors.request.use(async (config) => {
         KEY_TYPE_SIGN
     );
 
-    // ----- 1.  Ordinary JSON body -------------------------------------------
-    if (!isFormData(config.data)) {
+    // ----- 1. JSON body (POST/PUT/DELETE with body) -----
+    if (config.data && !isFormData(config.data)) {
         const raw = { ...config.data, username: user.username, timestamp };
         const globalmessage = JSON.stringify(raw);
         const signature = await signMessage(globalmessage, privateKey);
 
         config.data = { globalmessage, signature };
-        // leave headers alone (axios sets application/json automatically)
         return config;
     }
 
-    // ----- 2.  multipart/form‑data upload ------------------------------------
-    const fd = config.data; // original FormData
-    const msgObj = {
-        username: user.username,
-        timestamp,
-        ...buildMessageForFormData(fd),
-    };
-    const globalmessage = JSON.stringify(msgObj);
-    const signature = await signMessage(globalmessage, privateKey);
+    // ----- 2. multipart/form‑data -----
+    if (isFormData(config.data)) {
+        const fd = config.data;
+        const msgObj = {
+            username: user.username,
+            timestamp,
+            ...buildMessageForFormData(fd),
+        };
+        const globalmessage = JSON.stringify(msgObj);
+        const signature = await signMessage(globalmessage, privateKey);
 
-    // A. Put them as *extra* form fields  (recommended)
-    fd.append("globalmessage", globalmessage);
-    fd.append("signature", signature);
+        fd.append("globalmessage", globalmessage);
+        fd.append("signature", signature);
+        return config;
+    }
 
-    // B. Or, if you prefer headers instead, comment out A and use:
-    // config.headers["X-Username"]   = user.username;
-    // config.headers["X-Timestamp"]  = timestamp;
-    // config.headers["X-Signature"]  = signature;
+    // ----- 3. GET request with query parameters -----
+    if (config.method?.toLowerCase() === "get") {
+        const baseParams = config.params || {};
+        const raw = { ...baseParams, username: user.username, timestamp };
+        const globalmessage = JSON.stringify(raw);
+        const signature = await signMessage(globalmessage, privateKey);
 
-    // Never set Content‑Type manually for FormData → axios will insert the
-    // correct multipart boundary for you.
+        config.params = {
+            globalmessage,
+            signature,
+        };
+        return config;
+    }
+
     return config;
 });
 

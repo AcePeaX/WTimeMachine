@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
-import { useNavigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./AddConversation.css";
 import secureAxios from "../utils/secure-axios";
 import { Upload, Info } from "lucide-react";
@@ -15,6 +15,7 @@ import { loadSessionUser } from "../utils/users";
 import Modal, { QuickModal } from "../utils/Modal";
 import { conversationUploadLogic } from "../utils/conversationUploadLogic";
 import { ProgressBar } from "../utils/ProgressBar";
+import { useApp } from "../utils/AppProvider";
 
 export function hslToHex(h, s, l) {
     s /= 100;
@@ -45,6 +46,7 @@ export function generateHSLColorFromText(text) {
 }
 
 const AddConversation = () => {
+    const { reloadNav } = useApp();
     const [conversationName, setConversationName] = useState("");
     const [description, setDescription] = useState("");
     const [uploadedFile, setUploadedFile] = useState(null);
@@ -64,6 +66,11 @@ const AddConversation = () => {
     const confirmModal = useRef(null);
 
     const [erros, setErrors] = useState({});
+
+    const handleBeforeUnload = useCallback((e) => {
+        e.preventDefault();
+        e.returnValue = ""; // This is what triggers the confirmation dialog
+    }, []);
 
     const handleFileChange = (e) => {
         const file = e.target.files[0];
@@ -105,20 +112,29 @@ const AddConversation = () => {
             .then(async (response) => {
                 // Handle successful conversation creation
                 if (uploadedFile) {
-                    await conversationUploadLogic(setUploadModal, response.data.convoId, uploadedFile, aesKeyString, parseInt(aesSize));
-                    
+                    window.addEventListener("beforeunload", handleBeforeUnload);
+
+                    await conversationUploadLogic(
+                        setUploadModal,
+                        response.data.convoId,
+                        uploadedFile,
+                        aesKeyString,
+                        parseInt(aesSize)
+                    );
+
+                    window.removeEventListener("beforeunload", handleBeforeUnload);
+                    reloadNav();
+
                     setTimeout(() => {
                         setUploadModal({ ...uploadModal, open: false });
-                        navigate("/conversations/"+response.data.convoId);
-                    }
-                    , 2000);
+                        navigate("/conversations/" + response.data.convoId);
+                    }, 2000);
                 }
             })
             .catch((error) => {
                 if (error.response?.data.state === 2) {
                     confirmModal.current.open();
-                }
-                else{
+                } else {
                     console.error("Error creating conversation:", error);
                 }
                 setErrors(error.response.data.errors || {});
@@ -251,17 +267,27 @@ const AddConversation = () => {
                 <Modal isOpen={uploadModal.open}>
                     <div className="conv-upload-modal">
                         <h2>Uploading Conversation</h2>
-                        <div className="pg-comment">{uploadModal.pg1_comment}</div>
-                        <ProgressBar progress={uploadModal.pg1} color={null} className="pg-conv-upload-1" />
-                        <div className="pg-comment">{uploadModal.pg2_comment}</div>
-                        <ProgressBar progress={uploadModal.pg2} color={null} className="pg-conv-upload-2" />
+                        <div className="pg-comment">
+                            {uploadModal.pg1_comment}
+                        </div>
+                        <ProgressBar
+                            progress={uploadModal.pg1}
+                            color={null}
+                            className="pg-conv-upload-1"
+                        />
+                        <div className="pg-comment">
+                            {uploadModal.pg2_comment}
+                        </div>
+                        <ProgressBar
+                            progress={uploadModal.pg2}
+                            color={null}
+                            className="pg-conv-upload-2"
+                        />
                     </div>
                 </Modal>
             </div>
         </div>
     );
 };
-
-
 
 export default AddConversation;

@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import "./Sidebar.css";
 import { loadSessionUser } from "../utils/users";
+import secureAxios from "../utils/secure-axios";
 import {
     Plus,
     Settings,
@@ -9,13 +10,36 @@ import {
     LogOut,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useApp } from "./AppProvider";
 
 const Sidebar = () => {
+    const { navReloadTracker } = useApp();
     const user = loadSessionUser();
     const navigate = useNavigate();
+    const [conversations, setConversations] = useState([]);
     const [collapsed, setCollapsed] = useState(false);
 
     const toggleSidebar = () => setCollapsed((prev) => !prev);
+
+    const clickConversation = useCallback(
+        (convId) => {
+            navigate(`/conversations/${convId}`);
+        },
+        [navigate]
+    );
+
+    useEffect(() => {
+        secureAxios
+            .get("/api/convo")
+            .then((response) => {
+                // Handle the response data here
+                console.log("Conversations:", response.data);
+                setConversations(response.data.conversations);
+            })
+            .catch((error) => {
+                console.error("Error fetching conversations:", error);
+            });
+    }, [navReloadTracker]);
 
     return (
         <div className={`sidebar ${collapsed ? "collapsed" : ""}`}>
@@ -38,22 +62,30 @@ const Sidebar = () => {
             </div>
 
             <div className="sidebar-content">
-                <button onClick={()=>{navigate("/add-conv")}} className="sidebar-btn">
+                <button
+                    onClick={() => {
+                        navigate("/add-conv");
+                    }}
+                    className="sidebar-btn"
+                >
                     <Plus size={18} />
                     {!collapsed && <span>New Conversation</span>}
                 </button>
 
                 <div className="conversation-list">
                     {/* Placeholder list, replace with dynamic data */}
-                    {["Chat with AI", "Team Discussion"].map((conv, i) => (
+                    {conversations.map((conv, i) => (
                         <div
+                            onClick={() => clickConversation(conv._id)}
                             key={i}
                             className="conversation-item"
                             style={{
                                 justifyContent: collapsed ? "center" : "start",
+                                borderRight: `7px solid ${conv.color}`,
+                                paddingLeft: collapsed ? "0" : "8px",
                             }}
                         >
-                            🗨️ {collapsed ? "" : conv}
+                            🗨️ {collapsed ? "" : conv.title}
                         </div>
                     ))}
                 </div>

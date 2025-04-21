@@ -34,7 +34,6 @@
     border-bottom: 1px solid #e5e7eb;
 }
 
-
 .user-section {
     display: flex;
     align-items: center;
@@ -69,6 +68,32 @@
     flex-grow: 1;
     padding: 1rem;
     overflow-y: auto;
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: #9994 #f4f4f4; /* Firefox */
+}
+
+/* Chrome, Edge, Safari */
+.sidebar-content::-webkit-scrollbar {
+    width: 6px;
+    display: none;
+}
+
+.sidebar-content:hover::-webkit-scrollbar {
+    display: block;
+}
+
+.sidebar-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar-content::-webkit-scrollbar-thumb {
+    background-color: rgba(100, 100, 100, 0.3);
+    border-radius: 4px;
+    transition: background-color 0.3s ease;
+}
+
+.sidebar-content::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(100, 100, 100, 0.6);
 }
 
 .sidebar-btn {
@@ -110,6 +135,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    transition: 0.2s;
 }
 
 .conversation-item:hover {

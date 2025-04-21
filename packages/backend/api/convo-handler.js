@@ -46,19 +46,19 @@ export const addConvo = async (req, res) => {
             aesSize: req.body.aesSize,
             color: req.body.color,
         });
-        
+
         await Grant.create({
             grantee: username,
             convoId: convo._id,
             isAdmin: true,
             grants: {
-                'all': {
+                all: {
                     encryptedDerivedKey: req.body.encryptedAesConvoKey,
-                }
-            }
+                },
+            },
         });
 
-        logger.info("Conversation created", {convoId: convo._id});
+        logger.info("Conversation created", { convoId: convo._id });
         res.status(201).json({
             convoId: convo._id,
             state: 0,
@@ -70,5 +70,31 @@ export const addConvo = async (req, res) => {
             state: -1,
             msg: err.message,
         });
+    }
+};
+
+export const getUserConversations = async (req, res) => {
+    try {
+        const { user } = req;
+
+        // Step 1: Get convoIds the user has access to
+        const userGrants = await Grant.find({ grantee: user.username }).select(
+            "convoId"
+        );
+        const convoIds = userGrants.map((grant) => grant.convoId);
+
+        if (convoIds.length === 0) {
+            return res.status(200).json({ conversations: [] });
+        }
+
+        // Step 2: Fetch those conversations
+        const conversations = await Convo.find({ _id: { $in: convoIds } }).sort(
+            { lastMessageAt: -1 }
+        );
+
+        return res.status(200).json({ conversations });
+    } catch (err) {
+        logger.warn("Error fetching conversations:", err.stack || err);
+        return res.status(500).json({ error: "Internal server error" });
     }
 };
