@@ -27,9 +27,7 @@ export const ConversationViewer = () => {
         }, 1200);
     }, []);
 
-    const filtered = messages.filter((msg) =>
-        spectator ? msg.sender === spectator : true
-    );
+    const filtered = messages;
 
     return (
         <div className="conversation-container">
@@ -56,7 +54,7 @@ export const ConversationViewer = () => {
                     value={spectator || ""}
                     onChange={(e) => setSpectator(e.target.value || null)}
                 >
-                    <option value="">– Show all –</option>
+                    <option value="">– None –</option>
                     <option value="simo">simo</option>
                     <option value="ayoub">ayoub</option>
                 </select>
@@ -66,7 +64,7 @@ export const ConversationViewer = () => {
             <div className="message-area">
                 {loading ? (
                     <div className="loading-msg">
-                        <LoaderCircle className="animate-spin mr-2" size={20} />
+                        <LoaderCircle className="spin mr-2" size={20} />
                         Loading messages...
                     </div>
                 ) : filtered.length === 0 ? (
@@ -81,7 +79,7 @@ export const ConversationViewer = () => {
                             isSpectator={
                                 spectator
                                     ? msg.sender === spectator
-                                    : msg.sender === "simo"
+                                    : false
                             } // fallback logic
                         />
                     ))

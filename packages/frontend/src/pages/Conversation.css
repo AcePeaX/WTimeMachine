@@ -39,6 +39,10 @@
     align-items: center;
 }
 
+.spectate-bar select {
+    width: 90%;
+}
+
 /* Message Area */
 .message-area {
     flex: 1;
@@ -95,4 +99,15 @@
     height: 100%;
     font-size: 14px;
     color: #777;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.spin {
+    display: inline-block;
+    animation: spin 1s linear infinite;
 }
