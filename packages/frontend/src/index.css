@@ -17,10 +17,12 @@ code {
   --bg: #FAFAFB;
   --bg-light: #FFFFFF;
   --primary: #7C3AED;
+  --primary-hover: #6511c5;
   --secondary: #34D399;
+  --secondary-hover: #2AA97A;
   --text: #1F2937;
 
-  --bg-filter:invert(93%) sepia(9%) saturate(851%) hue-rotate(201deg) brightness(108%) contrast(94%);
+  --bg-filter: invert(93%) sepia(9%) saturate(851%) hue-rotate(201deg) brightness(108%) contrast(94%);
   --primary-filter: invert(25%) sepia(98%) saturate(4473%) hue-rotate(256deg) brightness(96%) contrast(92%);
   --secondary-filter: invert(100%) sepia(45%) saturate(3282%) hue-rotate(77deg) brightness(89%) contrast(84%);
 }
@@ -29,10 +31,12 @@ code {
   --bg: #FAFAFB;
   --bg-light: #F0F0F5;
   --primary: #7C3AED;
+  --primary-hover: #6511c5; /* Brighter */
   --secondary: #34D399;
+  --secondary-hover: #2AA97A; /* Darker */
   --text: #1F2937;
 
-  --bg-filter:invert(93%) sepia(9%) saturate(851%) hue-rotate(201deg) brightness(108%) contrast(94%);
+  --bg-filter: invert(93%) sepia(9%) saturate(851%) hue-rotate(201deg) brightness(108%) contrast(94%);
   --primary-filter: invert(25%) sepia(98%) saturate(4473%) hue-rotate(256deg) brightness(96%) contrast(92%);
   --secondary-filter: invert(100%) sepia(45%) saturate(3282%) hue-rotate(77deg) brightness(89%) contrast(84%);
 }
@@ -41,7 +45,9 @@ code {
   --bg: #0F172A;
   --bg-light: #1E293B;
   --primary: #3B82F6;
+  --primary-hover: #2A61C1; /* Darker */
   --secondary: #FACC15;
+  --secondary-hover: #FFE34A; /* Brighter */
   --text: #E5E7EB;
 
   --bg-filter: invert(5%) sepia(25%) saturate(5166%) hue-rotate(210deg) brightness(93%) contrast(92%);
@@ -53,7 +59,9 @@ code {
   --bg: #F9FAFB;
   --bg-light: #F3F4F6;
   --primary: #0EA5E9;
+  --primary-hover: #14B8F4; /* Brighter */
   --secondary: #F97316;
+  --secondary-hover: #D15C12; /* Darker */
   --text: #374151;
 
   --bg-filter: invert(93%) sepia(9%) saturate(17%) hue-rotate(168deg) brightness(100%) contrast(106%);
@@ -65,11 +73,14 @@ code {
   --bg: #FFFFFF;
   --bg-light: #F9FAFB;
   --primary: #111827;
+  --primary-hover: #0D121E; /* Darker */
   --secondary: #6B7280;
+  --secondary-hover: #8C939F; /* Brighter */
   --text: #111827;
 
   --bg-filter: invert(92%) sepia(100%) saturate(0%) hue-rotate(202deg) brightness(106%) contrast(106%);
   --primary-filter: invert(6%) sepia(7%) saturate(6892%) hue-rotate(186deg) brightness(93%) contrast(93%);
   --secondary-filter: invert(45%) sepia(14%) saturate(376%) hue-rotate(182deg) brightness(93%) contrast(87%);
 }
+
 

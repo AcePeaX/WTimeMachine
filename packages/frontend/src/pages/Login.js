@@ -506,7 +506,7 @@ export const Login = () => {
                     />
 
                     <button
-                        className="btn primary confirm"
+                        className="btn primary confirm unlock-account"
                         disabled={!passwordInput || passwordInput.length < 4}
                         onClick={handlePasswordUnlock}
                     >

@@ -8,7 +8,7 @@ export const MessageBubble = ({ msg, isSpectator }) => {
     const renderContent = () => {
         switch (type) {
             case "text":
-                return <p className="bubble-text">{content}</p>;
+                return <div className="bubble-text">{content}</div>;
 
             case "image":
                 return (
@@ -48,12 +48,14 @@ export const MessageBubble = ({ msg, isSpectator }) => {
     return (
         <div className={`message-bubble ${alignClass}`}>
             <div className="bubble-sender">{sender}</div>
-            {renderContent()}
-            <div className="bubble-time">
-                {new Date(date).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                })}
+            <div className="bubble-body-container">
+                {renderContent()}
+                <div className="bubble-time">
+                    {new Date(date).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                    })}
+                </div>
             </div>
         </div>
     );

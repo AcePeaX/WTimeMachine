@@ -31,10 +31,31 @@
     margin-bottom: 4px;
 }
 
+.bubble-body-container{
+    max-width: 50vw;
+}
+
+.bubble-body-container > img{
+    display: block;
+}
+
+.bubble-text{
+    text-align: left;
+    display: inline-block;
+}
+
 .bubble-time {
     font-size: 10px;
     color: #aaa;
     margin-top: 6px;
+    display: inline-block;
+}
+
+.bubble-right .bubble-time{
+    margin-left: 10px;
+}
+.bubble-left .bubble-text{
+    margin-right: 10px;
 }
 
 .bubble-image {

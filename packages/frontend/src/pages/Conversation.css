@@ -20,6 +20,14 @@
     top: 0;
     z-index: 10;
 }
+.conversation-topbar .search-container{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.conversation-topbar .search-container svg{
+    margin-right: 7px;
+}
 
 .conversation-topbar input {
     border: 1px solid #ccc;
@@ -30,9 +38,7 @@
 }
 
 .spectate-bar {
-    padding: 8px 16px;
-    background: #f3f4f6;
-    border-bottom: 1px solid #e5e5e5;
+    padding: 2px 16px;
     font-size: 14px;
     display: flex;
     gap: 8px;
@@ -42,6 +48,7 @@
 .spectate-bar select {
     width: unset;
     margin-bottom: 0px;
+    font-size: 0.8em;
 }
 
 /* Message Area */
@@ -111,4 +118,29 @@
 .spin {
     display: inline-block;
     animation: spin 1s linear infinite;
+}
+
+
+.main-content {
+    padding: 0!important;
+}
+
+.conv-settings-button{
+    display: flex;
+    justify-content: center;
+    cursor: pointer;
+    rotate: 0;
+    scale: 1;
+    transition: 0.3s ease;
+    margin-left: 15px;
+}
+
+.conv-settings-button:hover{
+    rotate: 90deg;
+    scale: 1.1;
+}
+
+.topbar-subcontainer{
+    display: flex;
+    align-items: center;
 }

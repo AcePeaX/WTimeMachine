@@ -9,7 +9,7 @@ const dummyMessages = Array.from({ length: 20 }, (_, i) => ({
     content:
         i % 5 === 0
             ? "https://t4.ftcdn.net/jpg/01/62/69/25/360_F_162692511_SidIKVCDnt5UKHPNqpCb2MSKvfBlx1lG.jpg"
-            : `This is message #${i} from ${i % 2 === 0 ? "simo" : "ayoub"}`,
+            : `This is message #${i} from ${i % 2 === 0 ? "simo" : "ayoub"} are you okay with it my bro?`,
     type: i % 5 === 0 ? "image" : "text",
     date: new Date(Date.now() - i * 100000),
 }));
@@ -33,7 +33,7 @@ export const ConversationViewer = () => {
         <div className="conversation-container">
             {/* Top Bar */}
             <div className="conversation-topbar">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 search-container">
                     <Search size={16} />
                     <input
                         type="text"
@@ -42,22 +42,24 @@ export const ConversationViewer = () => {
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                <button className="p-2 hover:bg-gray-100 rounded">
-                    <Settings size={18} />
-                </button>
-            </div>
 
-            {/* Spectate Sender */}
-            <div className="spectate-bar">
-                👁️ Spectate:
-                <select
-                    value={spectator || ""}
-                    onChange={(e) => setSpectator(e.target.value || null)}
-                >
-                    <option value="">– None –</option>
-                    <option value="simo">simo</option>
-                    <option value="ayoub">ayoub</option>
-                </select>
+                {/* Spectate Sender */}
+                <div className="topbar-subcontainer">
+                    <div className="spectate-bar">
+                        👁️ Spectate:
+                        <select
+                            value={spectator || ""}
+                            onChange={(e) => setSpectator(e.target.value || null)}
+                        >
+                            <option value="">– None –</option>
+                            <option value="simo">simo</option>
+                            <option value="ayoub">ayoub</option>
+                        </select>
+                    </div>
+                    <div className="conv-settings-button">
+                        <Settings size={18} />
+                    </div>
+                </div>
             </div>
 
             {/* Message Area */}

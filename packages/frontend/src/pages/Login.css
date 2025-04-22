@@ -127,8 +127,16 @@ select {
     cursor: pointer;
 }
 
+.modal-overlay .btn.confirm.unlock-account{
+    background-color: var(--secondary);
+}
+
 .modal-overlay .btn.confirm:hover {
-    background-color: #6b21a8; /* Slightly darker shade of primary */
+    background-color: var(--primary-hover);
+}
+
+.modal-overlay .btn.confirm.unlock-account:hover {
+    background-color: var(--secondary-hover);
 }
 
 .modal-info {
