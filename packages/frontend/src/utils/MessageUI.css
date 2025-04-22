@@ -6,9 +6,16 @@
     position: relative;
     line-height: 1.4;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-    margin: 6px 0;
+    margin: 2px 0;
     background: #f4f4f4;
     white-space: pre-wrap;
+}
+
+.message-bubble.bubble-margin-top{
+    margin-top: 9px;
+}
+.message-bubble.bubble-margin-bottom{
+    margin-bottom: 9px;
 }
 
 .bubble-right {
@@ -23,6 +30,14 @@
     background-color: #ffffff;
     border-bottom-left-radius: 4px;
     text-align: left;
+}
+
+.message-bubble.bubble-margin-top.bubble-left{
+    border-top-left-radius: 0;
+}
+
+.message-bubble.bubble-margin-top.bubble-right{
+    border-top-right-radius: 0;
 }
 
 .bubble-sender {
@@ -72,7 +87,8 @@
 }
 
 .bubble-file {
-    display: inline-block;
+    display: flex;
+    justify-content: center;
     padding: 6px 8px;
     background: #eee;
     border-radius: 6px;

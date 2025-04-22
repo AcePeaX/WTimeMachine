@@ -68,11 +68,39 @@ export const ConversationViewer = () => {
             .then(async response => {
                 console.log(response.data)
                 const newMessages = await decryptMessagesWithGrants(response.data.messages, response.data.grants, response.data.keySize)
-                console.log(newMessages)
                 setLoading(false);
                 setMessages((oldMessages) => {
                     const [result, senders] = mergeSortedListsAndGetSenders(oldMessages, newMessages)
                     setSenders(senders)
+                    let i = 0
+                    let last_sender = null
+                    let last_time = null
+                    for (i = 0; i < result.length; i++) {
+                        const date = new Date(result[i].date);
+                        result[i].displaySender = false
+                        result[i].marginTop = false
+                        result[i].marginBottom = false
+                        last_time = date
+                        if (last_sender == null || last_sender != result[i].sender) {
+                            result[i].marginTop = true
+                            if (i > 0) {
+                                result[i - 1].marginBottom = false
+                            }
+                            result[i].displaySender = true
+                            last_sender = result[i].sender
+                            continue
+                        }
+                        last_sender = result[i].sender
+                        if (last_time == null || date.getTime() - last_time.getTime() > 1000 * 60 * 10) {
+                            result[i].displaySender = true
+                            result[i].marginTop = true
+                            if (i > 0) {
+                                result[i - 1].marginBottom = false
+                            }
+                        }
+                        console.log("time diff", date.getTime() - last_time.getTime(), result[i].displaySender)
+                    }
+                    console.log(result)
                     return result
                 })
             })

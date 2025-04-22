@@ -48,6 +48,7 @@ export const MessageBubble = ({ msg, isSpectator }) => {
             default:
                 return (
                     <a href={content} className="bubble-file" download>
+                        {msg.content.filename} <br/>
                         📎 Download file
                     </a>
                 );
@@ -55,9 +56,9 @@ export const MessageBubble = ({ msg, isSpectator }) => {
     };
 
     return (
-        <div className={`message-bubble ${alignClass}`}>
+        <div className={`message-bubble ${alignClass} ${msg.marginTop ? "bubble-margin-top" : ""} ${msg.marginBottom ? "bubble-margin-bottom" : ""}`}>
             {/* Only show sender if it's not a system message */}
-            {!isSystemMessage && <div className="bubble-sender">{sender}</div>}
+            {!isSystemMessage && msg.displaySender && <div className="bubble-sender">{sender}</div>}
             <div className="bubble-body-container">
                 {renderContent()}
                 {!isSystemMessage && (

@@ -229,7 +229,8 @@ export async function decryptMessagesWithGrants(messages, grants, keySize) {
             ...decryptedMessage,
             content: decryptedMessage.content ? decryptedMessage.content : decryptedMessage.mediaRef,
             id: sequence,
-            date
+            date,
+            type: decryptedMessage.content.mimeType ? getFileTypeFromMimeType(decryptedMessage.content.mimeType) : "text"
         })
     }
     
@@ -310,4 +311,47 @@ export function getMimeTypeFromFilename(filename) {
     };
 
     return mimeTypes[extension] || mimeTypes.default;
+}
+
+export function getFileTypeFromMimeType(mimeType) {
+    const typeMapping = {
+        // Images
+        "image/jpeg": "image",
+        "image/png": "image",
+        "image/gif": "image",
+        "image/webp": "image",
+        "image/svg+xml": "image",
+        "image/bmp": "image",
+
+        // Audio
+        "audio/mpeg": "audio",
+        "audio/wav": "audio",
+        "audio/ogg": "audio",
+        "audio/opus": "audio",
+        "audio/mp4": "audio",
+
+        // Video
+        "video/mp4": "video",
+        "video/webm": "video",
+        "video/quicktime": "video",
+
+        // Text & documents
+        "text/plain": "file",
+        "text/html": "file",
+        "application/json": "file",
+        "text/csv": "file",
+        "application/pdf": "file",
+        "text/vcard": "file",
+
+        // Compressed / Archive
+        "application/zip": "file",
+        "application/vnd.rar": "file",
+        "application/x-7z-compressed": "file",
+        "application/x-tar": "file",
+
+        // Default fallback
+        "application/octet-stream": "file",
+    };
+
+    return typeMapping[mimeType] || "file"; // Default to "file" if MIME type is unknown
 }
