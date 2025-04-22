@@ -202,7 +202,7 @@ export const getMessages = async (req, res) => {
 
     // Default values for startSeq and endSeq
     startSeq = startSeq ? parseInt(startSeq) : undefined;
-    endSeq = endSeq ? parseInt(endSeq) : 20;
+    endSeq = endSeq ? parseInt(endSeq) : 60;
     
     const grant = await Grant.findOne({
         convoId: convId,

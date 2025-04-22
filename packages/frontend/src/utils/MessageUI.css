@@ -12,10 +12,10 @@
 }
 
 .message-bubble.bubble-margin-top{
-    margin-top: 9px;
+    margin-top: 16px;
 }
 .message-bubble.bubble-margin-bottom{
-    margin-bottom: 9px;
+    margin-bottom: 16px;
 }
 
 .bubble-right {
@@ -85,9 +85,11 @@
 
 .bubble-audio,
 .bubble-video {
-    width: 100%;
     margin-top: 6px;
     border-radius: 6px;
+}
+.bubble-video {
+    width: 100%;
 }
 
 .bubble-file {

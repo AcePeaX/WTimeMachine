@@ -36,8 +36,8 @@ export const MessageBubble = ({ msg, isSpectator, getMediaContent }) => {
 
             case "audio":
                 return (
-                    <audio controls className="bubble-audio">
-                        <source src={content} />
+                    <audio controls src={getMediaContent(msg.mediaRef.mediaId)} className="bubble-audio">
+                        <source />
                         Your browser does not support the audio element.
                     </audio>
                 );
