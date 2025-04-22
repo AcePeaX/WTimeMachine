@@ -42,16 +42,20 @@ function mergeSortedListsAndGetSenders(list1, list2) {
     // Add remaining elements from list1 (if any)
     while (i < list1.length) {
         mergedList.push(list1[i]);
+        if (list1[i].sender != null) {
+            Senders[list1[i].sender] = true
+        }
         i++;
     }
 
     // Add remaining elements from list2 (if any)
     while (j < list2.length) {
         mergedList.push(list2[j]);
+        if (list2[j].sender != null) {
+            Senders[list2[j].sender] = true
+        }
         j++;
     }
-
-    console.log("Senders", Senders)
 
     return [mergedList, Object.keys(Senders)];
 }
@@ -109,8 +113,7 @@ export const ConversationViewer = () => {
                 }
                 setLoading(false);
                 setMessages((oldMessages) => {
-                    const [result, new_senders] = mergeSortedListsAndGetSenders(oldMessages, newMessages)
-                    console.log("new senders", new_senders)
+                    const [result, new_senders] = mergeSortedListsAndGetSenders(oldMessages, newMessages);
                     setSenders(new_senders)
                     let i = 0
                     let last_sender = null
@@ -149,7 +152,9 @@ export const ConversationViewer = () => {
 
     useEffect(() => {
         setMessages([])
-        lazyLoadMessages()
+        setTimeout(() => {
+            lazyLoadMessages()
+        },0)
     }, [convId, setMessages, lazyLoadMessages]);
 
     return (
