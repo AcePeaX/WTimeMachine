@@ -12,7 +12,7 @@ import crypto from "crypto";
 import { verifyMessage } from '@timemachine/security';
 
 import { addConvo, getUserConversations } from "./convo-handler.js";
-import { uploadMedia, uploadMessage } from "./message-handler.js";
+import { uploadMedia, uploadMessage, getMessages } from "./message-handler.js";
 
 
 const apiRouter = Router();
@@ -100,6 +100,7 @@ apiRouter.get("/convo", getUserConversations);
 
 apiRouter.post("/convo", addConvo);
 
+apiRouter.get("/message/:convId", getMessages);
 apiRouter.post("/message/:convId", uploadMessage);
 
 

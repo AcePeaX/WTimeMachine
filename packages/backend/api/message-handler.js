@@ -5,7 +5,7 @@ import { Media } from "../models/Media.js";
 import { Grant } from "../models/Grant.js";
 import { Message } from "../models/Message.js";
 
-import { logger, MSGUtils } from "@timemachine/utils";
+import { logger, MSGUtils, validateRequest } from "@timemachine/utils";
 
 // POST /api/media/:conv_id
 export const uploadMedia = async (req, res) => {
@@ -132,9 +132,8 @@ export const uploadMessage = async (req, res) => {
         if (msg.type === "text") {
             if (!msg.content?.ciphertext || !msg.content?.iv) {
                 return res.status(400).json({
-                    error: `Missing content.ciphertext or iv in text message at index ${
-                        msg.index ?? "?"
-                    }`,
+                    error: `Missing content.ciphertext or iv in text message at index ${msg.index ?? "?"
+                        }`,
                 });
             }
 
@@ -150,9 +149,8 @@ export const uploadMessage = async (req, res) => {
                 !msg.mediaRef?.encryptedMediaKey?.iv
             ) {
                 return res.status(400).json({
-                    error: `Missing mediaRef or encryptedMediaKey in media message at index ${
-                        msg.index ?? "?"
-                    }`,
+                    error: `Missing mediaRef or encryptedMediaKey in media message at index ${msg.index ?? "?"
+                        }`,
                 });
             }
 
@@ -181,3 +179,79 @@ export const uploadMessage = async (req, res) => {
         state: 0,
     });
 };
+
+
+export const getMessages = async (req, res) => {
+    let { convId, startSeq, endSeq } = req.params
+
+    const rules = {
+        convId: { required: true, type: "string" },
+    };
+
+    const errors = validateRequest(req.params, rules);
+
+    if (Object.keys(errors).length > 0) {
+        return res.status(400).json({ errors });
+    }
+
+    // Default values for startSeq and endSeq
+    startSeq = startSeq ? parseInt(startSeq) : undefined;
+    endSeq = endSeq ? parseInt(endSeq) : 20;
+    
+    const grant = await Grant.findOne({
+        convoId: convId,
+        grantee: req.user.username,
+    })
+    if(grant===null){
+        return res.status(403).json({
+            error: "Forbidden.",
+        });
+    }
+
+    const grantMap = grant.grants
+
+    try {
+        // If startSeq is undefined, fetch the last `endSeq` messages
+        let query;
+        if (typeof startSeq === "undefined") {
+            query = Message.find({ convoId: convId })
+                .sort({ sequence: -1 })
+                .limit(endSeq);
+        } else {
+            // Fetch messages between startSeq and endSeq
+            query = Message.find({
+                convoId: convId,
+                sequence: { $gte: startSeq, $lt: startSeq + endSeq },
+            }).sort({ sequence: 1 });
+        }
+
+
+        let messages = await Promise.all([query.exec()])
+        const grants = {}
+
+        if(grantMap.has("all")){
+            grants["all"] = grantMap.get("all")
+        }
+        else{
+            grants["sender"] = grantMap.get("sender")
+
+            // TODO: Complete the grants to send to the user
+        }
+
+        if (!messages || messages.length === 0) {
+            return res.status(404).json({
+                error: "No messages found for the given conversation.",
+            });
+        }
+
+        return res.status(200).json({
+            messages,
+            grants
+        });
+    } catch (err) {
+        logger.error({ err }, "Error fetching messages");
+        return res.status(500).json({
+            error: "Internal server error."
+        });
+    }
+}
