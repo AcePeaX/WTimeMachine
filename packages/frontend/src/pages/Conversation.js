@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Settings, Search, LoaderCircle } from "lucide-react";
 import { MessageBubble } from "../utils/MessageUI"; // 👈 make sure the path is correct
 import "./Conversation.css";
 import secureAxios from "../utils/secure-axios";
 import { useParams } from "react-router-dom";
-import { decryptMessagesWithGrants } from "../utils/messages";
+import { decryptMessagesWithGrants, getFileTypeFromMimeType } from "../utils/messages";
+import { decryptAESGCM_rawhalf, importAESKeyFromBase64 } from "../utils/security";
 
 
 function mergeSortedListsAndGetSenders(list1, list2) {
@@ -50,6 +51,8 @@ function mergeSortedListsAndGetSenders(list1, list2) {
         j++;
     }
 
+    console.log("Senders", Senders)
+
     return [mergedList, Object.keys(Senders)];
 }
 
@@ -61,17 +64,54 @@ export const ConversationViewer = () => {
     const [messages, setMessages] = useState([]);
     const [spectator, setSpectator] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
+    const [, setDummyReload] = useState(0);
+
+    const mediaIdToKey = useRef({});
+    const mediaInCall = useRef({})
+    const mediaIdToContent = useRef({});
+
+    const getMediaContent = useCallback((mediaId) => {
+        if (mediaIdToContent.current[mediaId] != null) {
+            return mediaIdToContent.current[mediaId]
+        }
+        if(mediaInCall.current[mediaId] !== false) {return}
+        mediaInCall.current[mediaId] = true
+        secureAxios.get(`/api/media/${mediaId}`)
+            .then(async response => {
+                const aesKey = await importAESKeyFromBase64(mediaIdToKey.current[mediaId])
+                console.log(response.data.data.ciphertext,response.data.data.iv)
+                const image = await decryptAESGCM_rawhalf(new Uint8Array(response.data.data.ciphertext.data), response.data.data.iv, aesKey)
+                if(getFileTypeFromMimeType(response.data.mimeType)==="image"){
+                    const blob = new Blob([image], { type: response.data.mimeType });
+                    const url = URL.createObjectURL(blob);
+                    mediaIdToContent.current[mediaId] = url
+                    mediaInCall.current[mediaId] = false
+                    setDummyReload((old) => old + 1)
+                }
+            })
+            .catch(error => {
+                console.error(error)
+            })
+    },[setDummyReload])
 
     const lazyLoadMessages = useCallback(() => {
         setLoading(true);
         secureAxios.get(`/api/message/${convId}`)
             .then(async response => {
-                console.log(response.data)
                 const newMessages = await decryptMessagesWithGrants(response.data.messages, response.data.grants, response.data.keySize)
+                for (let i = 0; i < newMessages.length; i++) {
+                    if(newMessages[i].type !== 'text') {
+                        if (mediaIdToKey.current[newMessages[i].mediaRef.mediaId] == null) {
+                            mediaIdToKey.current[newMessages[i].mediaRef.mediaId] = newMessages[i].mediaRef.mediaKey
+                            mediaInCall.current[newMessages[i].mediaRef.mediaId] = false
+                        }
+                    }
+                }
                 setLoading(false);
                 setMessages((oldMessages) => {
-                    const [result, senders] = mergeSortedListsAndGetSenders(oldMessages, newMessages)
-                    setSenders(senders)
+                    const [result, new_senders] = mergeSortedListsAndGetSenders(oldMessages, newMessages)
+                    console.log("new senders", new_senders)
+                    setSenders(new_senders)
                     let i = 0
                     let last_sender = null
                     let last_time = null
@@ -98,21 +138,19 @@ export const ConversationViewer = () => {
                                 result[i - 1].marginBottom = false
                             }
                         }
-                        console.log("time diff", date.getTime() - last_time.getTime(), result[i].displaySender)
                     }
-                    console.log(result)
                     return result
                 })
             })
             .catch(error => {
                 console.error(error)
             })
-        setSenders(senders)
     }, [setMessages, setSenders, convId])
 
     useEffect(() => {
+        setMessages([])
         lazyLoadMessages()
-    }, [convId]);
+    }, [convId, setMessages, lazyLoadMessages]);
 
     return (
         <div className="conversation-container">
@@ -138,7 +176,7 @@ export const ConversationViewer = () => {
                         >
                             <option value="">- None -</option>
                             {senders.map(sender => (
-                                <option value={sender}>{sender}</option>
+                                <option key={sender} value={sender}>{sender}</option>
                             ))}
                         </select>
                     </div>
@@ -168,7 +206,8 @@ export const ConversationViewer = () => {
                                 spectator
                                     ? msg.sender === spectator
                                     : false
-                            } // fallback logic
+                            }
+                            getMediaContent={getMediaContent}
                         />
                     ))
                 )}

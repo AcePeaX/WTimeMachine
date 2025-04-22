@@ -409,6 +409,21 @@ export async function decryptAESGCM(ciphertextBase64, ivBase64, cryptoKey) {
     return new TextDecoder().decode(decrypted);
 }
 
+export async function decryptAESGCM_rawhalf(ciphertext, ivBase64, cryptoKey) {;
+    const iv = Uint8Array.from(atob(ivBase64), (c) => c.charCodeAt(0));
+
+    const decrypted = await window.crypto.subtle.decrypt(
+        {
+            name: "AES-GCM",
+            iv,
+        },
+        cryptoKey,
+        ciphertext
+    );
+
+    return decrypted;
+}
+
 /**
  * Derives a reproducible AES-GCM key from a master key using HKDF.
  *

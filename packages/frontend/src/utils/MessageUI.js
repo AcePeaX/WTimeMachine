@@ -1,7 +1,12 @@
 import React from "react";
 import "./MessageUI.css";
 
-export const MessageBubble = ({ msg, isSpectator }) => {
+function isValidSTKFilename(str) {
+    const pattern = /^STK-\d+-WA\d+\.webp$/;
+    return pattern.test(str);
+}
+
+export const MessageBubble = ({ msg, isSpectator, getMediaContent }) => {
     const { type, content, sender, date } = msg;
 
     // Check if it's a system message
@@ -22,9 +27,9 @@ export const MessageBubble = ({ msg, isSpectator }) => {
             case "image":
                 return (
                     <img
-                        src={content.url}
+                        src={getMediaContent(msg.mediaRef.mediaId)}
                         alt={content.filename}
-                        className="bubble-image"
+                        className={`bubble-image ${isValidSTKFilename(content.filename) ? "stk-image" : ""}`}
                         loading="lazy"
                     />
                 );
@@ -48,7 +53,7 @@ export const MessageBubble = ({ msg, isSpectator }) => {
             default:
                 return (
                     <a href={content} className="bubble-file" download>
-                        {msg.content.filename} <br/>
+                        {msg.content.filename} <br />
                         📎 Download file
                     </a>
                 );
@@ -56,9 +61,15 @@ export const MessageBubble = ({ msg, isSpectator }) => {
     };
 
     return (
-        <div className={`message-bubble ${alignClass} ${msg.marginTop ? "bubble-margin-top" : ""} ${msg.marginBottom ? "bubble-margin-bottom" : ""}`}>
+        <div
+            className={`message-bubble ${alignClass} ${
+                msg.marginTop ? "bubble-margin-top" : ""
+            } ${msg.marginBottom ? "bubble-margin-bottom" : ""}`}
+        >
             {/* Only show sender if it's not a system message */}
-            {!isSystemMessage && msg.displaySender && <div className="bubble-sender">{sender}</div>}
+            {!isSystemMessage && msg.displaySender && (
+                <div className="bubble-sender">{sender}</div>
+            )}
             <div className="bubble-body-container">
                 {renderContent()}
                 {!isSystemMessage && (

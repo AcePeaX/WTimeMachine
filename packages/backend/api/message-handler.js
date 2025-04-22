@@ -270,3 +270,37 @@ export const getMessages = async (req, res) => {
         });
     }
 }
+
+export const getMedia = async (req, res) => {
+    const { mediaId } = req.params
+
+    const rules = {
+        mediaId: { required: true, type: "string" },
+    };
+
+    const errors = validateRequest(req.params, rules);
+
+    if (Object.keys(errors).length > 0) {
+        return res.status(400).json({ errors });
+    }
+
+    try {
+        const media = await Media.findById(mediaId);
+
+        if (!media) {
+            return res.status(404).json({ error: "Media not found." });
+        }
+
+        // Decrypt the media content
+
+        // Set the appropriate headers
+        res.setHeader("Content-Type", media.mimeType);
+        res.setHeader("Content-Length", media.size);
+
+        // Send the decrypted content
+        res.status(200).send({data:media.data,mimeType:media.mimeType});
+    } catch (err) {
+        logger.error({ err }, "Error fetching media");
+        return res.status(500).json({ error: "Internal server error." });
+    }
+}

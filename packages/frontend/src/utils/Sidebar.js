@@ -33,7 +33,6 @@ const Sidebar = () => {
             .get("/api/convo")
             .then((response) => {
                 // Handle the response data here
-                console.log("Conversations:", response.data);
                 setConversations(response.data.conversations);
             })
             .catch((error) => {

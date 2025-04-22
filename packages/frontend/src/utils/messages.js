@@ -215,7 +215,7 @@ export async function decryptMessagesWithGrants(messages, grants, keySize) {
         }
 
         const decryptedMessage = await decryptMessage({ sender, type, content, mediaRef }, messageKey, senderKey)
-        if (decryptedMessage.type == "media") {
+        if (decryptedMessage.type === "media") {
             decryptedMessage.content = JSON.parse(decryptedMessage.content)
             const ciphertext = decryptedMessage.mediaRef.encryptedMediaKey.ciphertext
             const iv = decryptedMessage.mediaRef.encryptedMediaKey.iv

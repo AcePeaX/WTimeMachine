@@ -79,6 +79,10 @@
     margin-top: 6px;
 }
 
+.stk-image{
+    max-width: 230px;
+}
+
 .bubble-audio,
 .bubble-video {
     width: 100%;
