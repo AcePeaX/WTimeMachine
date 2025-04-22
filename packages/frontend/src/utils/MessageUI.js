@@ -3,7 +3,16 @@ import "./MessageUI.css";
 
 export const MessageBubble = ({ msg, isSpectator }) => {
     const { type, content, sender, date } = msg;
-    const alignClass = isSpectator ? "bubble-right" : "bubble-left";
+
+    // Check if it's a system message
+    const isSystemMessage = sender === null;
+
+    // Determine alignment class
+    const alignClass = isSystemMessage
+        ? "bubble-center"
+        : isSpectator
+        ? "bubble-right"
+        : "bubble-left";
 
     const renderContent = () => {
         switch (type) {
@@ -13,8 +22,8 @@ export const MessageBubble = ({ msg, isSpectator }) => {
             case "image":
                 return (
                     <img
-                        src={content}
-                        alt="Sent media"
+                        src={content.url}
+                        alt={content.filename}
                         className="bubble-image"
                         loading="lazy"
                     />
@@ -47,15 +56,18 @@ export const MessageBubble = ({ msg, isSpectator }) => {
 
     return (
         <div className={`message-bubble ${alignClass}`}>
-            <div className="bubble-sender">{sender}</div>
+            {/* Only show sender if it's not a system message */}
+            {!isSystemMessage && <div className="bubble-sender">{sender}</div>}
             <div className="bubble-body-container">
                 {renderContent()}
-                <div className="bubble-time">
-                    {new Date(date).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                    })}
-                </div>
+                {!isSystemMessage && (
+                    <div className="bubble-time">
+                        {new Date(date).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                        })}
+                    </div>
+                )}
             </div>
         </div>
     );

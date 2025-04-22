@@ -4,6 +4,7 @@ import path from "path";
 import { Media } from "../models/Media.js";
 import { Grant } from "../models/Grant.js";
 import { Message } from "../models/Message.js";
+import { Convo } from "../models/Convo.js";
 
 import { logger, MSGUtils, validateRequest } from "@timemachine/utils";
 
@@ -161,6 +162,11 @@ export const uploadMessage = async (req, res) => {
                     iv: msg.mediaRef.encryptedMediaKey.iv,
                 },
             };
+            baseDoc.content = {
+                ciphertext: msg.content.ciphertext,
+                iv: msg.content.iv,
+                metadata: msg.content.metadata ?? {},
+            };
         }
 
         docs.push(baseDoc);
@@ -225,8 +231,16 @@ export const getMessages = async (req, res) => {
             }).sort({ sequence: 1 });
         }
 
+        const convoPromise = Convo.findOne({_id:convId})
 
-        let messages = await Promise.all([query.exec()])
+
+        let [messages,convo] = await Promise.all([query.exec(),convoPromise])
+        if(convo==null){
+            return res.status(404).json({
+                error: "No conversation found for the given id.",
+            });
+        }
+
         const grants = {}
 
         if(grantMap.has("all")){
@@ -246,7 +260,8 @@ export const getMessages = async (req, res) => {
 
         return res.status(200).json({
             messages,
-            grants
+            grants,
+            keySize:convo.aesSize
         });
     } catch (err) {
         logger.error({ err }, "Error fetching messages");

@@ -85,3 +85,18 @@
 .bubble-file:hover {
     background: #ddd;
 }
+
+.bubble-center {
+    margin: 0 auto; /* Center the bubble */
+    background-color: #e8e8e8; /* Neutral background color */
+    color: #555; /* Neutral text color */
+    text-align: center; /* Center-align text */
+    border-radius: 12px;
+    font-style: italic; /* Optional: Make it look distinct */
+    max-width: 60%; /* Optional: Adjust width */
+    padding: 10px 14px;
+    font-size: 13px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    margin-top: 10px;
+    margin-bottom: 10px;
+}

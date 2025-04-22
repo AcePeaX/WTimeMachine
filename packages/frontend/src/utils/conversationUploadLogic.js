@@ -529,7 +529,7 @@ export const conversationUploadLogic = async (
 
     // Loop over messages
     for (let i = 0; i < messages.length; i++) {
-        const { vault, block, group, chunk } = MSG.indexToHierarchy(i);
+        const { vault, block, group, chunk, message } = MSG.indexToHierarchy(i);
 
         if (vault !== oldVault) {
             try {
@@ -606,7 +606,7 @@ export const conversationUploadLogic = async (
                     .toString()
                     .padStart(2, "0")}.${group
                     .toString()
-                    .padStart(2, "0")}.${chunk.toString().padStart(2, "0")}.${i
+                    .padStart(2, "0")}.${chunk.toString().padStart(2, "0")}.${message
                     .toString()
                     .padStart(2, "0")}`,
                 keySize
@@ -624,8 +624,6 @@ export const conversationUploadLogic = async (
             }
             const fileKey = filename_to_key[messages[i].content];
             messages[i].content = {
-                ciphertext: messages[i].content,
-                iv: fileKey,
                 filename:
                     fileOriginalName_to_encryptedName[messages[i].content],
                 mimeType: file[fileIndex].mimeType,
@@ -636,8 +634,9 @@ export const conversationUploadLogic = async (
                 await sleep(20);
                 check_and_upload();
             }
+            messages[i].content = JSON.stringify(messages[i].content)
             messages[i].mediaRef = {
-                mediaId: encryptedFileName_to_id[messages[i].content.filename],
+                mediaId: encryptedFileName_to_id[encFileName],
                 encryptedMediaKey: await encryptAESGCM(fileKey, messageKey),
             };
         }

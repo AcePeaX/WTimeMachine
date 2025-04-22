@@ -4,41 +4,86 @@ import { MessageBubble } from "../utils/MessageUI"; // 👈 make sure the path i
 import "./Conversation.css";
 import secureAxios from "../utils/secure-axios";
 import { useParams } from "react-router-dom";
+import { decryptMessagesWithGrants } from "../utils/messages";
 
-const dummyMessages = Array.from({ length: 20 }, (_, i) => ({
-    id: i,
-    sender: i % 2 === 0 ? "simo" : "ayoub",
-    content:
-        i % 5 === 0
-            ? "https://t4.ftcdn.net/jpg/01/62/69/25/360_F_162692511_SidIKVCDnt5UKHPNqpCb2MSKvfBlx1lG.jpg"
-            : `This is message #${i} from ${i % 2 === 0 ? "simo" : "ayoub"} are you okay with it my bro?`,
-    type: i % 5 === 0 ? "image" : "text",
-    date: new Date(Date.now() + i * 100000),
-}));
+
+function mergeSortedListsAndGetSenders(list1, list2) {
+    const mergedList = [];
+    const Senders = {}
+    let i = 0; // Pointer for list1
+    let j = 0; // Pointer for list2
+
+    // Merge the two lists
+    while (i < list1.length && j < list2.length) {
+        if (list1[i].id < list2[j].id) {
+            mergedList.push(list1[i]);
+            if (list1[i].sender != null) {
+                Senders[list1[i].sender] = true
+            }
+            i++;
+        } else if (list1[i].id > list2[j].id) {
+            mergedList.push(list2[j]);
+            if (list2[j].sender != null) {
+                Senders[list2[j].sender] = true
+            }
+            j++;
+        } else {
+            // If ids are equal, take the one from list2
+            mergedList.push(list2[j]);
+            if (list2[j].sender != null) {
+                Senders[list2[j].sender] = true
+            }
+            i++; // Skip the one from list1
+            j++;
+        }
+    }
+
+    // Add remaining elements from list1 (if any)
+    while (i < list1.length) {
+        mergedList.push(list1[i]);
+        i++;
+    }
+
+    // Add remaining elements from list2 (if any)
+    while (j < list2.length) {
+        mergedList.push(list2[j]);
+        j++;
+    }
+
+    return [mergedList, Object.keys(Senders)];
+}
+
 
 export const ConversationViewer = () => {
     const { convId } = useParams()
+    const [senders, setSenders] = useState([])
     const [loading, setLoading] = useState(true);
     const [messages, setMessages] = useState([]);
     const [spectator, setSpectator] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
 
-    const lazyLoadMessages = useCallback(()=>{
+    const lazyLoadMessages = useCallback(() => {
+        setLoading(true);
         secureAxios.get(`/api/message/${convId}`)
-        .then(response=>{
-            console.log(response.data)
-        })
-        .catch(error=>{
-            console.error(error)
-        })
-    },[setMessages, messages, convId])
+            .then(async response => {
+                console.log(response.data)
+                const newMessages = await decryptMessagesWithGrants(response.data.messages, response.data.grants, response.data.keySize)
+                console.log(newMessages)
+                setLoading(false);
+                setMessages((oldMessages) => {
+                    const [result, senders] = mergeSortedListsAndGetSenders(oldMessages, newMessages)
+                    setSenders(senders)
+                    return result
+                })
+            })
+            .catch(error => {
+                console.error(error)
+            })
+        setSenders(senders)
+    }, [setMessages, setSenders, convId])
 
     useEffect(() => {
         lazyLoadMessages()
-        setTimeout(() => {
-            setMessages(dummyMessages);
-            setLoading(false);
-        }, 1200);
     }, [convId]);
 
     return (
@@ -63,9 +108,10 @@ export const ConversationViewer = () => {
                             value={spectator || ""}
                             onChange={(e) => setSpectator(e.target.value || null)}
                         >
-                            <option value="">– None –</option>
-                            <option value="simo">simo</option>
-                            <option value="ayoub">ayoub</option>
+                            <option value="">- None -</option>
+                            {senders.map(sender => (
+                                <option value={sender}>{sender}</option>
+                            ))}
                         </select>
                     </div>
                     <div className="conv-settings-button">

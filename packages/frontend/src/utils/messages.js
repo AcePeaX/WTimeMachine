@@ -4,7 +4,15 @@ import {
     decryptAESGCM,
     decryptAES,
     cryptoKeyToUint8Array,
+    exportAESKeyToBase64,
+    deriveKeyFromMaster,
+    decryptAESKey,
+    importPrivateKeyFromPEM,
+    base64ToUint8Array,
+    uint8ArrayToBase64,
+    importAESKeyFromBase64,
 } from "./security.js";
+import { loadSessionUser } from "./users.js";
 
 export const BLOCK_per_VAULT = 8;
 export const GROUP_per_BLOCK = 8;
@@ -55,8 +63,7 @@ export async function encryptMessage(
     key,
     senderKey
 ) {
-    const encryptedContent =
-        type === "text" ? await encryptAESGCM(content, key) : {};
+    const encryptedContent = await encryptAESGCM(content, key);
 
     const senderEncrypted = sender
         ? encryptAES(sender, await cryptoKeyToUint8Array(senderKey))
@@ -74,10 +81,7 @@ export async function decryptMessage(
     key,
     senderKey
 ) {
-    const decryptedContent =
-        type === "text"
-            ? await decryptAESGCM(content.ciphertext, content.iv, key)
-            : null;
+    const decryptedContent = await decryptAESGCM(content.ciphertext, content.iv, key)
 
     const decryptedSender = sender
         ? decryptAES(sender, await cryptoKeyToUint8Array(senderKey))
@@ -89,6 +93,147 @@ export async function decryptMessage(
         content: decryptedContent,
         mediaRef,
     };
+}
+
+
+/**
+ * @typedef {Object} Hierarchy
+ * @property {number} vault
+ * @property {number} block
+ * @property {number} group
+ * @property {number} chunk
+ * @property {number} message
+ */
+export async function decryptMessagesWithGrants(messages, grants, keySize) {
+    messages = messages.sort((a, b) => a.sequence - b.sequence)
+    let [oldVault, oldBlock, oldGroup, oldChunk] = [-1, -1, -1, -1]
+    let [vaultKey, blockKey, groupKey, chunkKey, messageKey] = [null, null, null, null, null]
+    if (typeof grants["all"] == 'undefined') {
+        throw Error("Using sub grants not yet implemented") // TODO: implement the use of different grants
+    }
+
+    const sessionUser = loadSessionUser()
+    const privateKey = await importPrivateKeyFromPEM(sessionUser.privateKey)
+    const encryptedDerivedKey = base64ToUint8Array(grants["all"].encryptedDerivedKey)
+    const conversationKey = await decryptAESKey(encryptedDerivedKey, privateKey)
+    const conversationKeyString = uint8ArrayToBase64(conversationKey)
+
+    const senderKey = await deriveKeyFromMaster(
+        conversationKeyString,
+        "sender",
+        keySize
+    );
+
+    const decryptedMessages = []
+
+    for (const { sender, type, content, mediaRef, hierarchy, date, sequence } of messages) {
+        /** @type {Hierarchy} */
+        const { vault, block, group, chunk, message } = hierarchy;
+        if (vault !== oldVault) {
+            try {
+                vaultKey = await exportAESKeyToBase64(
+                    await deriveKeyFromMaster(
+                        conversationKeyString,
+                        `vault-${vault.toString().padStart(6, "0")}`,
+                        keySize
+                    )
+                );
+            } catch (e) {
+                console.error("Error deriving vault key:", e);
+                throw e;
+            }
+        }
+        if (block !== oldBlock) {
+            try {
+                blockKey = await exportAESKeyToBase64(
+                    await deriveKeyFromMaster(
+                        vaultKey,
+                        `block-${vault.toString().padStart(6, "0")}.${block
+                            .toString()
+                            .padStart(2, "0")}`,
+                        keySize
+                    )
+                );
+            } catch (e) {
+                console.error("Error deriving block key:", e);
+                throw e;
+            }
+        }
+        if (group !== oldGroup) {
+            try {
+                groupKey = await exportAESKeyToBase64(
+                    await deriveKeyFromMaster(
+                        blockKey,
+                        `group-${vault.toString().padStart(6, "0")}.${block
+                            .toString()
+                            .padStart(2, "0")}.${group
+                                .toString()
+                                .padStart(2, "0")}`,
+                        keySize
+                    )
+                );
+            } catch (e) {
+                console.error("Error deriving group key:", e);
+                throw e;
+            }
+        }
+        if (chunk !== oldChunk) {
+            try {
+                chunkKey = await exportAESKeyToBase64(
+                    await deriveKeyFromMaster(
+                        groupKey,
+                        `chunk-${vault.toString().padStart(6, "0")}.${block
+                            .toString()
+                            .padStart(2, "0")}.${group
+                                .toString()
+                                .padStart(2, "0")}.${chunk
+                                    .toString()
+                                    .padStart(2, "0")}`,
+                        keySize
+                    )
+                );
+            } catch (e) {
+                console.error("Error deriving chunk key:", e);
+                throw e;
+            }
+        }
+        try {
+            messageKey = await deriveKeyFromMaster(
+                chunkKey,
+                `message-${vault.toString().padStart(6, "0")}.${block
+                    .toString()
+                    .padStart(2, "0")}.${group
+                        .toString()
+                        .padStart(2, "0")}.${chunk.toString().padStart(2, "0")}.${message
+                            .toString()
+                            .padStart(2, "0")}`,
+                keySize
+            );
+        } catch (e) {
+            console.error("Error deriving chunk key:", e);
+            throw e;
+        }
+
+        const decryptedMessage = await decryptMessage({ sender, type, content, mediaRef }, messageKey, senderKey)
+        if (decryptedMessage.type == "media") {
+            decryptedMessage.content = JSON.parse(decryptedMessage.content)
+            const ciphertext = decryptedMessage.mediaRef.encryptedMediaKey.ciphertext
+            const iv = decryptedMessage.mediaRef.encryptedMediaKey.iv
+            const decryptedMediaRefKey = await decryptAESGCM(ciphertext, iv, messageKey)
+            const real_filename = decryptAES(decryptedMessage.content.filename, await cryptoKeyToUint8Array(await importAESKeyFromBase64(decryptedMediaRefKey)))
+            decryptedMessage.content.filename = real_filename
+            delete decryptedMessage.mediaRef.encryptedMediaKey
+            decryptedMessage.mediaRef.mediaKey = decryptedMediaRefKey
+        }
+        decryptedMessages.push({
+            ...decryptedMessage,
+            content: decryptedMessage.content ? decryptedMessage.content : decryptedMessage.mediaRef,
+            id: sequence,
+            date
+        })
+    }
+    
+    return decryptedMessages.sort((a,b)=>a.id-b.id)
 }
 
 export async function encryptFile(

@@ -78,7 +78,6 @@ messageSchema.pre("validate", function (next) {
                 )
             );
         }
-        this.content = undefined;
     } else {
         return next(new Error("Invalid message type"));
     }
