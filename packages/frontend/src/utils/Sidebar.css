@@ -145,6 +145,13 @@
     border-right-width: 10px;
 }
 
+.current-conv-item{
+    border-right-width: 13px;
+}
+.current-conv-item:hover{
+    border-right-width: 18px;
+}
+
 .sidebar-footer {
     padding: 1rem;
     border-top: 1px solid #e5e7eb;

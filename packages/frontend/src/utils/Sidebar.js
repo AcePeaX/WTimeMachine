@@ -9,13 +9,15 @@ import {
     ChevronRight,
     LogOut,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useApp } from "./AppProvider";
 
 const Sidebar = () => {
     const { navReloadTracker } = useApp();
     const user = loadSessionUser();
     const navigate = useNavigate();
+    const location = useLocation();
+    const [currentConv, setCurrentConv] = useState(null)
     const [conversations, setConversations] = useState([]);
     const [collapsed, setCollapsed] = useState(false);
 
@@ -39,6 +41,13 @@ const Sidebar = () => {
                 console.error("Error fetching conversations:", error);
             });
     }, [navReloadTracker]);
+
+    useEffect(()=>{
+        // Extract convId from the URL if it matches /conversations/:convId
+        const match = location.pathname.match(/\/conversations\/([^/]+)/);
+        const convId = match ? match[1] : null;
+        setCurrentConv(convId)
+    }, [location])
 
     return (
         <div className={`sidebar ${collapsed ? "collapsed" : ""}`}>
@@ -77,7 +86,7 @@ const Sidebar = () => {
                         <div
                             onClick={() => clickConversation(conv._id)}
                             key={i}
-                            className="conversation-item"
+                            className={"conversation-item"+(currentConv===conv._id ? " current-conv-item" : "")}
                             style={{
                                 justifyContent: collapsed ? "center" : "start",
                                 borderRightColor: `${conv.color}`,
