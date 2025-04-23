@@ -73,10 +73,16 @@ export const ConversationViewer = () => {
     const [spectator, setSpectator] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [, setDummyReload] = useState(0);
+    const [reachedEnd, setReachedEnd] = useState(false)
 
     const mediaIdToKey = useRef({});
     const mediaInCall = useRef({});
     const mediaIdToContent = useRef({});
+
+    const lastLoadedMessage = useRef(-1);
+    const loadingNewRef = useRef(false);
+    const containerRef = useRef(null);
+    const loaderTopRef = useRef(-1);
 
     const getMediaContent = useCallback(
         (mediaId) => {
@@ -131,21 +137,27 @@ export const ConversationViewer = () => {
         [setDummyReload]
     );
 
-    const lazyLoadMessages = useCallback(() => {
-        setLoading(true);
+    const lazyLoadMessages = useCallback((start_seq = -1, limit = undefined) => {
         secureAxios
-            .get(`/api/message/${convId}`)
+            .get(`/api/message/${convId}` + (start_seq !== -1 ? `?startSeq=${start_seq}&limit=${limit}` : ''))
             .then(async (response) => {
+                if(response.status===204) {
+                    setReachedEnd(true)
+                    return
+                }
                 const newMessages = await decryptMessagesWithGrants(
                     response.data.messages,
                     response.data.grants,
                     response.data.keySize
                 );
+                if(response.data.isEnd){
+                    setReachedEnd(true)
+                }
                 for (let i = 0; i < newMessages.length; i++) {
                     if (newMessages[i].type !== "text") {
                         if (
                             mediaIdToKey.current[
-                                newMessages[i].mediaRef.mediaId
+                            newMessages[i].mediaRef.mediaId
                             ] == null
                         ) {
                             mediaIdToKey.current[
@@ -169,6 +181,9 @@ export const ConversationViewer = () => {
                     let last_time = null;
                     for (i = 0; i < result.length; i++) {
                         const date = new Date(result[i].date);
+                        if (lastLoadedMessage.current === -1 || lastLoadedMessage.current > result[i].id) {
+                            lastLoadedMessage.current = result[i].id
+                        }
                         result[i].displaySender = false;
                         result[i].marginTop = false;
                         result[i].marginBottom = false;
@@ -189,7 +204,7 @@ export const ConversationViewer = () => {
                         if (
                             last_time == null ||
                             date.getTime() - last_time.getTime() >
-                                1000 * 60 * 10
+                            1000 * 60 * 10
                         ) {
                             result[i].displaySender = true;
                             result[i].marginTop = true;
@@ -198,20 +213,41 @@ export const ConversationViewer = () => {
                             }
                         }
                     }
+                    loadingNewRef.current = false
                     return result;
                 });
             })
             .catch((error) => {
                 console.error(error);
             });
-    }, [setMessages, setSenders, convId]);
+    }, [setMessages, setSenders, convId, setReachedEnd]);
 
     useEffect(() => {
         setMessages([]);
         setTimeout(() => {
+            setLoading(true);
             lazyLoadMessages();
         }, 0);
     }, [convId, setMessages, lazyLoadMessages]);
+
+    useEffect(() => {
+        const container = containerRef.current;
+
+        const handleScroll = () => {
+            if (loaderTopRef.current!==null && -container.scrollTop + container.clientHeight > container.scrollHeight - loaderTopRef.current.clientHeight - 20) {
+                if (!loading && !loadingNewRef.current) {
+                    loadingNewRef.current = true
+                    lazyLoadMessages(lastLoadedMessage.current-1)
+                }
+            }
+        };
+
+        // Attach scroll event listener
+        container.addEventListener("scroll", handleScroll);
+
+        // Cleanup event listener on unmount
+        return () => container.removeEventListener("scroll", handleScroll);
+    }, [messages, loading]);
 
     return (
         <div className="conversation-container">
@@ -252,7 +288,7 @@ export const ConversationViewer = () => {
             </div>
 
             {/* Message Area */}
-            <div className="message-area">
+            <div className="message-area" ref={containerRef}>
                 {loading ? (
                     <div className="loading-msg">
                         <LoaderCircle className="spin mr-2" size={20} />
@@ -276,6 +312,7 @@ export const ConversationViewer = () => {
                             />
                         ))
                 )}
+                {!reachedEnd ? <div ref={loaderTopRef} className="loading-bubble-up"><LoaderCircle className="spin mr-2" size={20} /></div> : ''}
             </div>
         </div>
     );

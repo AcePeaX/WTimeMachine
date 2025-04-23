@@ -58,7 +58,6 @@
     padding: 20px 24px;
     display: flex;
     flex-direction: column-reverse;
-    /*gap: 10px;*/
 }
 
 .message-bubble {
@@ -142,5 +141,11 @@
 
 .topbar-subcontainer{
     display: flex;
+    align-items: center;
+}
+
+.loading-bubble-up{
+    display: flex;
+    justify-content: center;
     align-items: center;
 }

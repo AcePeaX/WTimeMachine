@@ -188,7 +188,9 @@ export const uploadMessage = async (req, res) => {
 
 
 export const getMessages = async (req, res) => {
-    let { convId, startSeq, endSeq } = req.params
+    let { convId } = req.params
+
+    let { startSeq, limit } = req.query
 
     const rules = {
         convId: { required: true, type: "string" },
@@ -200,15 +202,19 @@ export const getMessages = async (req, res) => {
         return res.status(400).json({ errors });
     }
 
-    // Default values for startSeq and endSeq
+    // Default values for startSeq and limit
     startSeq = startSeq ? parseInt(startSeq) : undefined;
-    endSeq = endSeq ? parseInt(endSeq) : 60;
-    
+
+    const defaultLimit = 20
+    limit = limit ? parseInt(limit) : defaultLimit;
+
+    limit = isNaN(limit) ? defaultLimit : limit
+
     const grant = await Grant.findOne({
         convoId: convId,
         grantee: req.user.username,
     })
-    if(grant===null){
+    if (grant === null) {
         return res.status(403).json({
             error: "Forbidden.",
         });
@@ -217,25 +223,27 @@ export const getMessages = async (req, res) => {
     const grantMap = grant.grants
 
     try {
-        // If startSeq is undefined, fetch the last `endSeq` messages
+        // If startSeq is undefined, fetch the last `limit` messages
         let query;
         if (typeof startSeq === "undefined") {
             query = Message.find({ convoId: convId })
                 .sort({ sequence: -1 })
-                .limit(endSeq);
+                .limit(limit);
         } else {
-            // Fetch messages between startSeq and endSeq
+            // Fetch messages between startSeq and limit
             query = Message.find({
                 convoId: convId,
-                sequence: { $gte: startSeq, $lt: startSeq + endSeq },
-            }).sort({ sequence: 1 });
+                sequence: { $lt: startSeq },
+            })
+                .sort({ sequence: -1 })
+                .limit(limit); // Limit the number of results to the specified limit
         }
 
-        const convoPromise = Convo.findOne({_id:convId})
+        const convoPromise = Convo.findOne({ _id: convId })
 
 
-        let [messages,convo] = await Promise.all([query.exec(),convoPromise])
-        if(convo==null){
+        let [messages, convo] = await Promise.all([query.exec(), convoPromise])
+        if (convo == null) {
             return res.status(404).json({
                 error: "No conversation found for the given id.",
             });
@@ -243,17 +251,17 @@ export const getMessages = async (req, res) => {
 
         const grants = {}
 
-        if(grantMap.has("all")){
+        if (grantMap.has("all")) {
             grants["all"] = grantMap.get("all")
         }
-        else{
+        else {
             grants["sender"] = grantMap.get("sender")
 
             // TODO: Complete the grants to send to the user
         }
 
         if (!messages || messages.length === 0) {
-            return res.status(404).json({
+            return res.status(204).json({
                 error: "No messages found for the given conversation.",
             });
         }
@@ -261,7 +269,8 @@ export const getMessages = async (req, res) => {
         return res.status(200).json({
             messages,
             grants,
-            keySize:convo.aesSize
+            keySize: convo.aesSize,
+            isEnd: messages.length<limit
         });
     } catch (err) {
         logger.error({ err }, "Error fetching messages");
@@ -298,7 +307,7 @@ export const getMedia = async (req, res) => {
         res.setHeader("Content-Length", media.size);
 
         // Send the decrypted content
-        res.status(200).send({data:media.data,mimeType:media.mimeType});
+        res.status(200).send({ data: media.data, mimeType: media.mimeType });
     } catch (err) {
         logger.error({ err }, "Error fetching media");
         return res.status(500).json({ error: "Internal server error." });
