@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Settings, Search, LoaderCircle } from "lucide-react";
+import { Settings, Search, LoaderCircle, Cpu } from "lucide-react";
 import { MessageBubble } from "../utils/MessageUI"; // 👈 make sure the path is correct
 import "./Conversation.css";
 import secureAxios from "../utils/secure-axios";
@@ -12,6 +12,7 @@ import {
     decryptAESGCM_rawhalf,
     importAESKeyFromBase64,
 } from "../utils/security";
+import { getSpectate, loadSessionUser, setSpectate } from "../utils/users";
 
 function mergeSortedListsAndGetSenders(list1, list2) {
     const mergedList = [];
@@ -141,7 +142,7 @@ export const ConversationViewer = () => {
         secureAxios
             .get(`/api/message/${convId}` + (start_seq !== -1 ? `?startSeq=${start_seq}&limit=${limit}` : ''))
             .then(async (response) => {
-                if(response.status===204) {
+                if (response.status === 204) {
                     setReachedEnd(true)
                     return
                 }
@@ -150,7 +151,7 @@ export const ConversationViewer = () => {
                     response.data.grants,
                     response.data.keySize
                 );
-                if(response.data.isEnd){
+                if (response.data.isEnd) {
                     setReachedEnd(true)
                 }
                 for (let i = 0; i < newMessages.length; i++) {
@@ -231,13 +232,19 @@ export const ConversationViewer = () => {
     }, [convId, setMessages, lazyLoadMessages]);
 
     useEffect(() => {
+        const { username } = loadSessionUser();
+        const oldSpectator = getSpectate(username, convId)
+        setSpectator(oldSpectator)
+    }, [convId])
+
+    useEffect(() => {
         const container = containerRef.current;
 
         const handleScroll = () => {
-            if (loaderTopRef.current!==null && -container.scrollTop + container.clientHeight > container.scrollHeight - loaderTopRef.current.clientHeight - 20) {
+            if (loaderTopRef.current !== null && -container.scrollTop + container.clientHeight > container.scrollHeight - loaderTopRef.current.clientHeight - 20) {
                 if (!loading && !loadingNewRef.current) {
                     loadingNewRef.current = true
-                    lazyLoadMessages(lastLoadedMessage.current-1)
+                    lazyLoadMessages(lastLoadedMessage.current - 1)
                 }
             }
         };
@@ -269,8 +276,11 @@ export const ConversationViewer = () => {
                         👁️ Spectate:
                         <select
                             value={spectator || ""}
-                            onChange={(e) =>
+                            onChange={(e) => {
                                 setSpectator(e.target.value || null)
+                                const { username } = loadSessionUser();
+                                setSpectate(username, convId, e.target.value || null)
+                            }
                             }
                         >
                             <option value="">- None -</option>

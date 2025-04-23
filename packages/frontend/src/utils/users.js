@@ -1,14 +1,15 @@
-const STORAGE_KEY = "chat-users";
+const USER_STORAGE_KEY = "chat-users";
+const SPECTATE_STORAGE_KEY = "chat-spectate";
 
 // Load all users
 export function loadUsers() {
-    const data = localStorage.getItem(STORAGE_KEY);
+    const data = localStorage.getItem(USER_STORAGE_KEY);
     return data ? JSON.parse(data) : [];
 }
 
 // Save full list
 export function saveUsers(users) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(users));
 }
 
 // Add a new user
@@ -24,6 +25,45 @@ export function deleteUser(username) {
     saveUsers(users);
 }
 
+function loadSpectate() {
+    const data = localStorage.getItem(SPECTATE_STORAGE_KEY);
+    return data ? JSON.parse(data) : {};
+}
+
+function saveSpectate(obj){
+    localStorage.setItem(SPECTATE_STORAGE_KEY, JSON.stringify(obj));
+}
+
+export function getSpectate(username, convoId) {
+    const spectate = loadSpectate();
+    if(!spectate[username]){
+        return null;
+    }
+    if(!spectate[username][convoId]){
+        return null
+    }
+    return spectate[username][convoId]
+}
+
+export function setSpectate(username, convoId, spectated) {
+    const spectate = loadSpectate();
+    const convDict = spectate[username] ? spectate[username] : {};
+    convDict[convoId] = spectated
+    spectate[username] = convDict
+    saveSpectate(spectate)
+}
+
+export function deleteSpectate(username, convoId) {
+    const spectate = loadSpectate();
+    if(!spectate[username]){
+        return;
+    }
+    if(!spectate[username][convoId]){
+        return;
+    }
+    delete spectate[username][convoId]
+    saveSpectate(spectate)
+}
 
 
 
