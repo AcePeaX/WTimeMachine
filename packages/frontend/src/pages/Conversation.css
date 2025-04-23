@@ -20,12 +20,14 @@
     top: 0;
     z-index: 10;
 }
-.conversation-topbar .search-container{
+
+.conversation-topbar .search-container {
     display: flex;
     justify-content: center;
     align-items: center;
 }
-.conversation-topbar .search-container svg{
+
+.conversation-topbar .search-container svg {
     margin-right: 7px;
 }
 
@@ -121,10 +123,10 @@
 
 
 .main-content {
-    padding: 0!important;
+    padding: 0 !important;
 }
 
-.conv-settings-button{
+.conv-settings-button {
     display: flex;
     justify-content: center;
     cursor: pointer;
@@ -134,18 +136,58 @@
     margin-left: 15px;
 }
 
-.conv-settings-button:hover{
+.conv-settings-button:hover {
     rotate: 90deg;
     scale: 1.1;
 }
 
-.topbar-subcontainer{
+.topbar-subcontainer {
     display: flex;
     align-items: center;
 }
 
-.loading-bubble-up{
+.loading-bubble-up {
     display: flex;
     justify-content: center;
     align-items: center;
+}
+
+
+
+.conversation-full-container {
+    position: relative;
+    overflow-x: hidden;
+}
+
+.conv-settings-page {
+    position: absolute;
+    width: min(50%, 500px);
+    height: 100%;
+    right: max(-50%, -500px);
+    top: 0;
+    z-index: 500;
+    box-shadow: 0px 3px 0px 0px black;
+    transition: 0.5s;
+
+    background-color: var(--bg);
+}
+
+.conv-settings-page-open {
+    box-shadow: 0px 3px 4px 0px black;
+    right: 0px;
+}
+
+.conv-settings-header{
+    font-size: 1.3em;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+
+.conv-settings-users{
+    margin-left: 10px;
+    margin-top: 10px;
 }

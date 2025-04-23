@@ -270,6 +270,11 @@ export const getMessages = async (req, res) => {
             messages,
             grants,
             keySize: convo.aesSize,
+            convoTitle: convo.title,
+            convoUsers: {
+                normal: convo.participantUsers,
+                admin: convo.adminUsers
+            },
             isEnd: messages.length<limit
         });
     } catch (err) {

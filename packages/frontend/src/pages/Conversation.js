@@ -67,6 +67,7 @@ function mergeSortedListsAndGetSenders(list1, list2) {
 }
 
 export const ConversationViewer = () => {
+    const [settingsOpen, setSettingsOpen] = useState(false)
     const { convId } = useParams();
     const [senders, setSenders] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -75,6 +76,8 @@ export const ConversationViewer = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [, setDummyReload] = useState(0);
     const [reachedEnd, setReachedEnd] = useState(false)
+
+    const [settingsInfo, setSettingsInfo] = useState({ title: "", users: { normal: [], admin: [] } })
 
     const mediaIdToKey = useRef({});
     const mediaInCall = useRef({});
@@ -146,6 +149,7 @@ export const ConversationViewer = () => {
                     setReachedEnd(true)
                     return
                 }
+                setSettingsInfo({ title: response.data.convoTitle, users: response.data.convoUsers })
                 const newMessages = await decryptMessagesWithGrants(
                     response.data.messages,
                     response.data.grants,
@@ -232,6 +236,7 @@ export const ConversationViewer = () => {
     }, [convId, setMessages, lazyLoadMessages]);
 
     useEffect(() => {
+        setSettingsOpen(false)
         const { username } = loadSessionUser();
         const oldSpectator = getSpectate(username, convId)
         setSpectator(oldSpectator)
@@ -246,6 +251,11 @@ export const ConversationViewer = () => {
                     loadingNewRef.current = true
                     lazyLoadMessages(lastLoadedMessage.current - 1)
                 }
+
+                if (loaderTopRef.current !== null && -container.scrollTop + container.clientHeight > container.scrollHeight - 20) {
+                    container.scrollTop = container.clientHeight - (container.scrollHeight - 20)
+                }
+
             }
         };
 
@@ -256,7 +266,7 @@ export const ConversationViewer = () => {
         return () => container.removeEventListener("scroll", handleScroll);
     }, [messages, loading]);
 
-    return (
+    return (<div class="conversation-full-container">
         <div className="conversation-container">
             {/* Top Bar */}
             <div className="conversation-topbar">
@@ -291,7 +301,7 @@ export const ConversationViewer = () => {
                             ))}
                         </select>
                     </div>
-                    <div className="conv-settings-button">
+                    <div className="conv-settings-button" onClick={() => { setSettingsOpen((old) => !old) }}>
                         <Settings size={18} />
                     </div>
                 </div>
@@ -325,5 +335,26 @@ export const ConversationViewer = () => {
                 {!reachedEnd ? <div ref={loaderTopRef} className="loading-bubble-up"><LoaderCircle className="spin mr-2" size={20} /></div> : ''}
             </div>
         </div>
+        <div className={"conv-settings-page" + (settingsOpen ? " conv-settings-page-open" : "")}>
+            <ConvSettings setSettingsOpen={setSettingsOpen} settingsInfo={settingsInfo} />
+        </div>
+    </div>
     );
 };
+
+
+const ConvSettings = ({ setSettingsOpen, settingsInfo }) => {
+    return <>
+
+
+        <div className="conv-settings-header">
+            <div className="conv-settings-button" onClick={() => { setSettingsOpen((old) => !old) }}>
+                <Settings size={18} />
+            </div>{settingsInfo.title}</div>
+        <div className="conv-settings-users">
+            {settingsInfo.users.normal.map(user =>
+                <div className="conv-settings-users-one">{user} {settingsInfo.users.admin.includes(user) ? "admin" : ""}</div>
+            )}
+        </div>
+    </>
+}
