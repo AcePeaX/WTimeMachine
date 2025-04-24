@@ -161,9 +161,9 @@
 
 .conv-settings-page {
     position: absolute;
-    width: min(50%, 500px);
+    width: clamp(300px, 50%, 500px);
     height: 100%;
-    right: max(-50%, -500px);
+    right: clamp(-500px, -50%, -300px);
     top: 0;
     z-index: 500;
     box-shadow: 0px 3px 0px 0px black;
@@ -190,4 +190,17 @@
 .conv-settings-users{
     margin-left: 10px;
     margin-top: 10px;
+}
+
+.conv-settings-users-one{
+    display: flex;
+}
+.conv-settings-users-name{
+    margin-left: 5px;
+    margin-right: 5px;
+}
+
+.conv-settings-users-admin{
+    color: gray;
+    font-style: italic;
 }

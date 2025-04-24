@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Settings, Search, LoaderCircle, Cpu } from "lucide-react";
+import { Settings, Search, LoaderCircle } from "lucide-react";
 import { MessageBubble } from "../utils/MessageUI"; // 👈 make sure the path is correct
 import "./Conversation.css";
 import secureAxios from "../utils/secure-axios";
@@ -195,7 +195,7 @@ export const ConversationViewer = () => {
                         last_time = date;
                         if (
                             last_sender == null ||
-                            last_sender != result[i].sender
+                            last_sender !== result[i].sender
                         ) {
                             result[i].marginTop = true;
                             if (i > 0) {
@@ -236,7 +236,7 @@ export const ConversationViewer = () => {
     }, [convId, setMessages, lazyLoadMessages]);
 
     useEffect(() => {
-        setSettingsOpen(false)
+        setSettingsOpen(true)
         const { username } = loadSessionUser();
         const oldSpectator = getSpectate(username, convId)
         setSpectator(oldSpectator)
@@ -251,20 +251,17 @@ export const ConversationViewer = () => {
                     loadingNewRef.current = true
                     lazyLoadMessages(lastLoadedMessage.current - 1)
                 }
-
-                if (loaderTopRef.current !== null && -container.scrollTop + container.clientHeight > container.scrollHeight - 20) {
-                    container.scrollTop = container.clientHeight - (container.scrollHeight - 20)
+                if (loaderTopRef.current !== null && -container.scrollTop + container.clientHeight > container.scrollHeight - 25) {
+                    container.scrollTop = container.clientHeight - (container.scrollHeight - 25)
                 }
-
             }
         };
-
         // Attach scroll event listener
         container.addEventListener("scroll", handleScroll);
 
         // Cleanup event listener on unmount
         return () => container.removeEventListener("scroll", handleScroll);
-    }, [messages, loading]);
+    }, [messages, loading, lazyLoadMessages]);
 
     return (<div class="conversation-full-container">
         <div className="conversation-container">
@@ -352,8 +349,12 @@ const ConvSettings = ({ setSettingsOpen, settingsInfo }) => {
                 <Settings size={18} />
             </div>{settingsInfo.title}</div>
         <div className="conv-settings-users">
+            Participants
             {settingsInfo.users.normal.map(user =>
-                <div className="conv-settings-users-one">{user} {settingsInfo.users.admin.includes(user) ? "admin" : ""}</div>
+                <div className="conv-settings-users-one">
+                    <div className="conv-settings-users-name">{user}</div>
+                    {settingsInfo.users.admin.includes(user) ? <div className="conv-settings-users-admin">Admin</div> : ""}
+                </div>
             )}
         </div>
     </>
