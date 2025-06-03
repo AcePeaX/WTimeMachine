@@ -269,6 +269,7 @@ export const conversationUploadLogic = async (
                 if (keys.length === 0 && !done_encrypting_files) return;
                 else if (keys.length === 0) {
                     keys = Object.keys(encryptedFiles);
+                    done_uploading_files = true;
                     setUploadModalState((old) => {
                         return {
                             ...old,

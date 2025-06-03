@@ -188,12 +188,34 @@
 
 
 .conv-settings-users{
-    margin-left: 10px;
     margin-top: 10px;
+}
+.conv-settings-users > span{
+    display: block;
+    font-size: 1.3em;
+    margin-bottom: 10px;
+    margin-left: 10px;
 }
 
 .conv-settings-users-one{
     display: flex;
+    transition: 0.2s;
+    padding: 10px;
+}
+.conv-settings-users-one-control{
+    cursor: pointer;
+
+}
+.conv-settings-users-one-control:hover{
+    background-color: var(--bg-light);
+}
+.conv-settings-users-info{
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+.conv-settings-users-info > .user-initials{
+    margin-right: 10px;
 }
 .conv-settings-users-name{
     margin-left: 5px;
@@ -203,4 +225,52 @@
 .conv-settings-users-admin{
     color: gray;
     font-style: italic;
+    margin-left: auto;
+    margin-right: 10px;
+}
+
+.conv-settings-users-actions{
+    display: none;
+}
+
+.conv-settings-users-one-control > .conv-settings-users-actions{
+    display: flex;
+}
+
+.conv-settings-add-user{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    padding: 20px;
+    border-radius: 8px;
+    transition: 0.2s;
+    font-size: 1.3em;
+}
+.conv-settings-add-user:hover{
+    background-color: var(--bg-light);
+}
+
+.conv-settings-add-user > svg{
+    margin-left: 10px;
+}
+
+.add-users-to-conv-modal-buttons-container{
+    display: flex;
+}
+
+.add-users-to-conv-modal-buttons-container > button{
+    overflow: hidden;
+    transition: 0.3s;
+}
+.add-users-to-conv-modal-buttons-container > button:nth-child(1){
+    margin-right: 15px;
+}
+
+.add-users-to-conv-modal-buttons-cancel-button{
+    width: 0%;
+    padding: 0px;
+    border: none;
+    margin: 0px!important;
+    opacity: 0;
 }

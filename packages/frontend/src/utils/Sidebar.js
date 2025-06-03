@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import "./Sidebar.css";
-import { loadSessionUser } from "../utils/users";
+import { generateColorFromUsername, loadSessionUser } from "../utils/users";
 import secureAxios from "../utils/secure-axios";
 import {
     Plus,
@@ -53,7 +53,7 @@ const Sidebar = () => {
         <div className={`sidebar ${collapsed ? "collapsed" : ""}`}>
             <div className="sidebar-header">
                 <div className="user-section">
-                    <div className="user-initials">
+                    <div className="user-initials" style={{ backgroundColor: user?.color ? user.color : generateColorFromUsername(user?.username) }}>
                         {user?.username?.slice(0, 2).toUpperCase() || "US"}
                     </div>
                     {!collapsed && (

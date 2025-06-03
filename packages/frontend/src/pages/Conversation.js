@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Settings, Search, LoaderCircle } from "lucide-react";
+import { Settings, Search, LoaderCircle, UserX, ArrowBigUp, UserPlus } from "lucide-react";
 import { MessageBubble } from "../utils/MessageUI"; // 👈 make sure the path is correct
 import "./Conversation.css";
 import secureAxios from "../utils/secure-axios";
@@ -12,7 +12,8 @@ import {
     decryptAESGCM_rawhalf,
     importAESKeyFromBase64,
 } from "../utils/security";
-import { getSpectate, loadSessionUser, setSpectate } from "../utils/users";
+import { generateColorFromUsername, getSpectate, loadSessionUser, setSpectate } from "../utils/users";
+import Modal from "../utils/Modal";
 
 function mergeSortedListsAndGetSenders(list1, list2) {
     const mergedList = [];
@@ -83,6 +84,8 @@ export const ConversationViewer = () => {
     const mediaInCall = useRef({});
     const mediaIdToContent = useRef({});
 
+    const isAdmin = useRef({admin:false,username:""});
+
     const lastLoadedMessage = useRef(-1);
     const loadingNewRef = useRef(false);
     const containerRef = useRef(null);
@@ -148,6 +151,11 @@ export const ConversationViewer = () => {
                 if (response.status === 204) {
                     setReachedEnd(true)
                     return
+                }
+                const user = loadSessionUser().username
+                isAdmin.current = {
+                    admin: response.data.convoUsers.admin.includes(user),
+                    username: user
                 }
                 setSettingsInfo({ title: response.data.convoTitle, users: response.data.convoUsers })
                 const newMessages = await decryptMessagesWithGrants(
@@ -333,14 +341,27 @@ export const ConversationViewer = () => {
             </div>
         </div>
         <div className={"conv-settings-page" + (settingsOpen ? " conv-settings-page-open" : "")}>
-            <ConvSettings setSettingsOpen={setSettingsOpen} settingsInfo={settingsInfo} />
+            <ConvSettings setSettingsOpen={setSettingsOpen} settingsInfo={settingsInfo} isAdmin={isAdmin.current} />
         </div>
     </div>
     );
 };
 
 
-const ConvSettings = ({ setSettingsOpen, settingsInfo }) => {
+const ConvSettings = ({ setSettingsOpen, settingsInfo, isAdmin }) => {
+    const [isAddUserModalOpen, setAddUserModalOpen] = useState(true)
+    const [addUserUsername, setAddUserUsername] = useState("")
+    const [shouldConfirm, setShouldConfirm] = useState(false)
+
+    const handleAddUser = useCallback(()=>{
+        if(!shouldConfirm) {
+            setShouldConfirm(true)
+        }
+        else{
+
+        }
+    },[shouldConfirm])
+
     return <>
 
 
@@ -349,13 +370,34 @@ const ConvSettings = ({ setSettingsOpen, settingsInfo }) => {
                 <Settings size={18} />
             </div>{settingsInfo.title}</div>
         <div className="conv-settings-users">
-            Participants
+            <span>Participants</span>
             {settingsInfo.users.normal.map(user =>
-                <div className="conv-settings-users-one">
-                    <div className="conv-settings-users-name">{user}</div>
-                    {settingsInfo.users.admin.includes(user) ? <div className="conv-settings-users-admin">Admin</div> : ""}
+                <div className={"conv-settings-users-one "+((isAdmin.admin && isAdmin.username!==user) ? "conv-settings-users-one-control" : "")} key={user}>
+                    <div className="conv-settings-users-info">
+                        <div className="user-initials" style={{backgroundColor: generateColorFromUsername(user)}}>
+                            {user?.slice(0, 2).toUpperCase() || "US"}
+                        </div>
+                        <div className="conv-settings-users-name">{user+(isAdmin.username===user ? " (You)" : "")}</div>
+                        {settingsInfo.users.admin.includes(user) ? <div className="conv-settings-users-admin">Admin</div> : ""}
+                    </div>
+                    <div className="conv-settings-users-actions">
+                        <UserX />
+                        <ArrowBigUp/>
+                    </div>
                 </div>
             )}
+            {isAdmin.admin ? <div onClick={()=>{setAddUserModalOpen(true)}} className="conv-settings-add-user">Add a user <UserPlus /></div> : ""}
         </div>
+
+        <Modal isOpen={isAddUserModalOpen} onClose={()=>{setAddUserModalOpen(false)}}>
+            <center><h1>Give access</h1></center>
+            <input placeholder="Username" value={addUserUsername} onChange={(e)=>{setAddUserUsername(e.value)}} className="modal-input" />
+            <div className="add-users-to-conv-modal-buttons-container">
+                <button onClick={()=>{setShouldConfirm(false)}} className={"btn secondary unlock-account "+(!shouldConfirm ? "add-users-to-conv-modal-buttons-cancel-button" : "")}>Cancel</button>
+                <button className="btn primary confirm unlock-account" onClick={handleAddUser}>{shouldConfirm ? "Confirm" : "Add"}</button>
+            </div>
+            <br/><br/>
+            Giving access to portions of the conversation is a work in progress!
+        </Modal>
     </>
 }
