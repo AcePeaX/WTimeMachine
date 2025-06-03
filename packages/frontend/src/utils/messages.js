@@ -11,6 +11,8 @@ import {
     base64ToUint8Array,
     uint8ArrayToBase64,
     importAESKeyFromBase64,
+    encryptAESKey,
+    importPublicKeyFromPEM,
 } from "./security.js";
 import { loadSessionUser } from "./users.js";
 
@@ -95,6 +97,23 @@ export async function decryptMessage(
     };
 }
 
+/**
+ * 
+ * @param {object} myGrant Current user grant
+ * @param {string} otherUserPublicKey Target user public key
+ * @returns {Promise<string>}
+ */
+export const makeNewUserGrant = async(myGrant, otherUserPublicKey) => {
+    const sessionUser = loadSessionUser()
+    const privateKey = await importPrivateKeyFromPEM(sessionUser.privateKey)
+    const encryptedDerivedKey = base64ToUint8Array(myGrant["all"].encryptedDerivedKey)
+    const conversationKey = await decryptAESKey(encryptedDerivedKey, privateKey)
+
+
+    const publicKey = await importPublicKeyFromPEM(otherUserPublicKey)
+    const otherEncryptedDerivedKey = await encryptAESKey(conversationKey, publicKey)
+    return uint8ArrayToBase64(otherEncryptedDerivedKey)
+}
 
 /**
  * @typedef {Object} Hierarchy

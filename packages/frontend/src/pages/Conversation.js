@@ -1,5 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Settings, Search, LoaderCircle, UserX, ArrowBigUp, UserPlus } from "lucide-react";
+import {
+    Settings,
+    Search,
+    LoaderCircle,
+    UserX,
+    ArrowBigUp,
+    UserPlus,
+} from "lucide-react";
 import { MessageBubble } from "../utils/MessageUI"; // 👈 make sure the path is correct
 import "./Conversation.css";
 import secureAxios from "../utils/secure-axios";
@@ -7,12 +14,18 @@ import { useParams } from "react-router-dom";
 import {
     decryptMessagesWithGrants,
     getFileTypeFromMimeType,
+    makeNewUserGrant
 } from "../utils/messages";
 import {
     decryptAESGCM_rawhalf,
     importAESKeyFromBase64,
 } from "../utils/security";
-import { generateColorFromUsername, getSpectate, loadSessionUser, setSpectate } from "../utils/users";
+import {
+    generateColorFromUsername,
+    getSpectate,
+    loadSessionUser,
+    setSpectate,
+} from "../utils/users";
 import Modal from "../utils/Modal";
 
 function mergeSortedListsAndGetSenders(list1, list2) {
@@ -68,7 +81,7 @@ function mergeSortedListsAndGetSenders(list1, list2) {
 }
 
 export const ConversationViewer = () => {
-    const [settingsOpen, setSettingsOpen] = useState(false)
+    const [settingsOpen, setSettingsOpen] = useState(false);
     const { convId } = useParams();
     const [senders, setSenders] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -76,15 +89,18 @@ export const ConversationViewer = () => {
     const [spectator, setSpectator] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [, setDummyReload] = useState(0);
-    const [reachedEnd, setReachedEnd] = useState(false)
+    const [reachedEnd, setReachedEnd] = useState(false);
 
-    const [settingsInfo, setSettingsInfo] = useState({ title: "", users: { normal: [], admin: [] } })
+    const [settingsInfo, setSettingsInfo] = useState({
+        title: "",
+        users: { normal: [], admin: [] },
+    });
 
     const mediaIdToKey = useRef({});
     const mediaInCall = useRef({});
     const mediaIdToContent = useRef({});
 
-    const isAdmin = useRef({admin:false,username:""});
+    const isAdmin = useRef({ admin: false, username: "" });
 
     const lastLoadedMessage = useRef(-1);
     const loadingNewRef = useRef(false);
@@ -144,96 +160,111 @@ export const ConversationViewer = () => {
         [setDummyReload]
     );
 
-    const lazyLoadMessages = useCallback((start_seq = -1, limit = undefined) => {
-        secureAxios
-            .get(`/api/message/${convId}` + (start_seq !== -1 ? `?startSeq=${start_seq}&limit=${limit}` : ''))
-            .then(async (response) => {
-                if (response.status === 204) {
-                    setReachedEnd(true)
-                    return
-                }
-                const user = loadSessionUser().username
-                isAdmin.current = {
-                    admin: response.data.convoUsers.admin.includes(user),
-                    username: user
-                }
-                setSettingsInfo({ title: response.data.convoTitle, users: response.data.convoUsers })
-                const newMessages = await decryptMessagesWithGrants(
-                    response.data.messages,
-                    response.data.grants,
-                    response.data.keySize
-                );
-                if (response.data.isEnd) {
-                    setReachedEnd(true)
-                }
-                for (let i = 0; i < newMessages.length; i++) {
-                    if (newMessages[i].type !== "text") {
-                        if (
-                            mediaIdToKey.current[
-                            newMessages[i].mediaRef.mediaId
-                            ] == null
-                        ) {
-                            mediaIdToKey.current[
-                                newMessages[i].mediaRef.mediaId
-                            ] = newMessages[i].mediaRef.mediaKey;
-                            mediaInCall.current[
-                                newMessages[i].mediaRef.mediaId
-                            ] = false;
-                        }
+    const lazyLoadMessages = useCallback(
+        (start_seq = -1, limit = undefined) => {
+            secureAxios
+                .get(
+                    `/api/message/${convId}` +
+                        (start_seq !== -1
+                            ? `?startSeq=${start_seq}&limit=${limit}`
+                            : "")
+                )
+                .then(async (response) => {
+                    if (response.status === 204) {
+                        setReachedEnd(true);
+                        return;
                     }
-                }
-                setLoading(false);
-                setMessages((oldMessages) => {
-                    const [result, new_senders] = mergeSortedListsAndGetSenders(
-                        oldMessages,
-                        newMessages
+                    const user = loadSessionUser().username;
+                    isAdmin.current = {
+                        admin: response.data.convoUsers.admin.includes(user),
+                        username: user,
+                    };
+                    setSettingsInfo({
+                        title: response.data.convoTitle,
+                        users: response.data.convoUsers,
+                    });
+                    const newMessages = await decryptMessagesWithGrants(
+                        response.data.messages,
+                        response.data.grants,
+                        response.data.keySize
                     );
-                    setSenders(new_senders);
-                    let i = 0;
-                    let last_sender = null;
-                    let last_time = null;
-                    for (i = 0; i < result.length; i++) {
-                        const date = new Date(result[i].date);
-                        if (lastLoadedMessage.current === -1 || lastLoadedMessage.current > result[i].id) {
-                            lastLoadedMessage.current = result[i].id
-                        }
-                        result[i].displaySender = false;
-                        result[i].marginTop = false;
-                        result[i].marginBottom = false;
-                        last_time = date;
-                        if (
-                            last_sender == null ||
-                            last_sender !== result[i].sender
-                        ) {
-                            result[i].marginTop = true;
-                            if (i > 0) {
-                                result[i - 1].marginBottom = false;
-                            }
-                            result[i].displaySender = true;
-                            last_sender = result[i].sender;
-                            continue;
-                        }
-                        last_sender = result[i].sender;
-                        if (
-                            last_time == null ||
-                            date.getTime() - last_time.getTime() >
-                            1000 * 60 * 10
-                        ) {
-                            result[i].displaySender = true;
-                            result[i].marginTop = true;
-                            if (i > 0) {
-                                result[i - 1].marginBottom = false;
+                    if (response.data.isEnd) {
+                        setReachedEnd(true);
+                    }
+                    for (let i = 0; i < newMessages.length; i++) {
+                        if (newMessages[i].type !== "text") {
+                            if (
+                                mediaIdToKey.current[
+                                    newMessages[i].mediaRef.mediaId
+                                ] == null
+                            ) {
+                                mediaIdToKey.current[
+                                    newMessages[i].mediaRef.mediaId
+                                ] = newMessages[i].mediaRef.mediaKey;
+                                mediaInCall.current[
+                                    newMessages[i].mediaRef.mediaId
+                                ] = false;
                             }
                         }
                     }
-                    loadingNewRef.current = false
-                    return result;
+                    setLoading(false);
+                    setMessages((oldMessages) => {
+                        const [result, new_senders] =
+                            mergeSortedListsAndGetSenders(
+                                oldMessages,
+                                newMessages
+                            );
+                        setSenders(new_senders);
+                        let i = 0;
+                        let last_sender = null;
+                        let last_time = null;
+                        for (i = 0; i < result.length; i++) {
+                            const date = new Date(result[i].date);
+                            if (
+                                lastLoadedMessage.current === -1 ||
+                                lastLoadedMessage.current > result[i].id
+                            ) {
+                                lastLoadedMessage.current = result[i].id;
+                            }
+                            result[i].displaySender = false;
+                            result[i].marginTop = false;
+                            result[i].marginBottom = false;
+                            last_time = date;
+                            if (
+                                last_sender == null ||
+                                last_sender !== result[i].sender
+                            ) {
+                                result[i].marginTop = true;
+                                if (i > 0) {
+                                    result[i - 1].marginBottom = false;
+                                }
+                                result[i].displaySender = true;
+                                last_sender = result[i].sender;
+                                continue;
+                            }
+                            last_sender = result[i].sender;
+                            if (
+                                last_time == null ||
+                                date.getTime() - last_time.getTime() >
+                                    1000 * 60 * 10
+                            ) {
+                                result[i].displaySender = true;
+                                result[i].marginTop = true;
+                                if (i > 0) {
+                                    result[i - 1].marginBottom = false;
+                                }
+                            }
+                        }
+                        loadingNewRef.current = false;
+                        return result;
+                    });
+                })
+                .catch((error) => {
+                    console.error(error);
                 });
-            })
-            .catch((error) => {
-                console.error(error);
-            });
-    }, [setMessages, setSenders, convId, setReachedEnd]);
+        },
+        [setMessages, setSenders, convId, setReachedEnd]
+    );
 
     useEffect(() => {
         setMessages([]);
@@ -244,23 +275,34 @@ export const ConversationViewer = () => {
     }, [convId, setMessages, lazyLoadMessages]);
 
     useEffect(() => {
-        setSettingsOpen(true)
+        setSettingsOpen(false);
         const { username } = loadSessionUser();
-        const oldSpectator = getSpectate(username, convId)
-        setSpectator(oldSpectator)
-    }, [convId])
+        const oldSpectator = getSpectate(username, convId);
+        setSpectator(oldSpectator);
+    }, [convId]);
 
     useEffect(() => {
         const container = containerRef.current;
 
         const handleScroll = () => {
-            if (loaderTopRef.current !== null && -container.scrollTop + container.clientHeight > container.scrollHeight - loaderTopRef.current.clientHeight - 20) {
+            if (
+                loaderTopRef.current !== null &&
+                -container.scrollTop + container.clientHeight >
+                    container.scrollHeight -
+                        loaderTopRef.current.clientHeight -
+                        20
+            ) {
                 if (!loading && !loadingNewRef.current) {
-                    loadingNewRef.current = true
-                    lazyLoadMessages(lastLoadedMessage.current - 1)
+                    loadingNewRef.current = true;
+                    lazyLoadMessages(lastLoadedMessage.current - 1);
                 }
-                if (loaderTopRef.current !== null && -container.scrollTop + container.clientHeight > container.scrollHeight - 25) {
-                    container.scrollTop = container.clientHeight - (container.scrollHeight - 25)
+                if (
+                    loaderTopRef.current !== null &&
+                    -container.scrollTop + container.clientHeight >
+                        container.scrollHeight - 25
+                ) {
+                    container.scrollTop =
+                        container.clientHeight - (container.scrollHeight - 25);
                 }
             }
         };
@@ -271,133 +313,256 @@ export const ConversationViewer = () => {
         return () => container.removeEventListener("scroll", handleScroll);
     }, [messages, loading, lazyLoadMessages]);
 
-    return (<div class="conversation-full-container">
-        <div className="conversation-container">
-            {/* Top Bar */}
-            <div className="conversation-topbar">
-                <div className="flex items-center gap-2 search-container">
-                    <Search size={16} />
-                    <input
-                        type="text"
-                        placeholder="Search..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                </div>
+    return (
+        <div class="conversation-full-container">
+            <div className="conversation-container">
+                {/* Top Bar */}
+                <div className="conversation-topbar">
+                    <div className="flex items-center gap-2 search-container">
+                        <Search size={16} />
+                        <input
+                            type="text"
+                            placeholder="Search..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
 
-                {/* Spectate Sender */}
-                <div className="topbar-subcontainer">
-                    <div className="spectate-bar">
-                        👁️ Spectate:
-                        <select
-                            value={spectator || ""}
-                            onChange={(e) => {
-                                setSpectator(e.target.value || null)
-                                const { username } = loadSessionUser();
-                                setSpectate(username, convId, e.target.value || null)
-                            }
-                            }
+                    {/* Spectate Sender */}
+                    <div className="topbar-subcontainer">
+                        <div className="spectate-bar">
+                            👁️ Spectate:
+                            <select
+                                value={spectator || ""}
+                                onChange={(e) => {
+                                    setSpectator(e.target.value || null);
+                                    const { username } = loadSessionUser();
+                                    setSpectate(
+                                        username,
+                                        convId,
+                                        e.target.value || null
+                                    );
+                                }}
+                            >
+                                <option value="">- None -</option>
+                                {senders.map((sender) => (
+                                    <option key={sender} value={sender}>
+                                        {sender}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div
+                            className="conv-settings-button"
+                            onClick={() => {
+                                setSettingsOpen((old) => !old);
+                            }}
                         >
-                            <option value="">- None -</option>
-                            {senders.map((sender) => (
-                                <option key={sender} value={sender}>
-                                    {sender}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className="conv-settings-button" onClick={() => { setSettingsOpen((old) => !old) }}>
-                        <Settings size={18} />
+                            <Settings size={18} />
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Message Area */}
-            <div className="message-area" ref={containerRef}>
-                {loading ? (
-                    <div className="loading-msg">
-                        <LoaderCircle className="spin mr-2" size={20} />
-                        Loading messages...
-                    </div>
-                ) : messages.length === 0 ? (
-                    <div className="text-center text-gray-400 mt-10">
-                        No messages
-                    </div>
-                ) : (
-                    [...messages]
-                        .reverse()
-                        .map((msg) => (
-                            <MessageBubble
-                                key={msg.id}
-                                msg={msg}
-                                isSpectator={
-                                    spectator ? msg.sender === spectator : false
-                                }
-                                getMediaContent={getMediaContent}
-                            />
-                        ))
-                )}
-                {!reachedEnd ? <div ref={loaderTopRef} className="loading-bubble-up"><LoaderCircle className="spin mr-2" size={20} /></div> : ''}
+                {/* Message Area */}
+                <div className="message-area" ref={containerRef}>
+                    {loading ? (
+                        <div className="loading-msg">
+                            <LoaderCircle className="spin mr-2" size={20} />
+                            Loading messages...
+                        </div>
+                    ) : messages.length === 0 ? (
+                        <div className="text-center text-gray-400 mt-10">
+                            No messages
+                        </div>
+                    ) : (
+                        [...messages]
+                            .reverse()
+                            .map((msg) => (
+                                <MessageBubble
+                                    key={msg.id}
+                                    msg={msg}
+                                    isSpectator={
+                                        spectator
+                                            ? msg.sender === spectator
+                                            : false
+                                    }
+                                    getMediaContent={getMediaContent}
+                                />
+                            ))
+                    )}
+                    {!reachedEnd ? (
+                        <div ref={loaderTopRef} className="loading-bubble-up">
+                            <LoaderCircle className="spin mr-2" size={20} />
+                        </div>
+                    ) : (
+                        ""
+                    )}
+                </div>
+            </div>
+            <div
+                className={
+                    "conv-settings-page" +
+                    (settingsOpen ? " conv-settings-page-open" : "")
+                }
+            >
+                <ConvSettings
+                    setSettingsOpen={setSettingsOpen}
+                    settingsInfo={settingsInfo}
+                    isAdmin={isAdmin.current}
+                />
             </div>
         </div>
-        <div className={"conv-settings-page" + (settingsOpen ? " conv-settings-page-open" : "")}>
-            <ConvSettings setSettingsOpen={setSettingsOpen} settingsInfo={settingsInfo} isAdmin={isAdmin.current} />
-        </div>
-    </div>
     );
 };
 
-
 const ConvSettings = ({ setSettingsOpen, settingsInfo, isAdmin }) => {
-    const [isAddUserModalOpen, setAddUserModalOpen] = useState(true)
-    const [addUserUsername, setAddUserUsername] = useState("")
-    const [shouldConfirm, setShouldConfirm] = useState(false)
+    const [isAddUserModalOpen, setAddUserModalOpen] = useState(false);
+    const [addUserUsername, setAddUserUsername] = useState("");
+    const [shouldConfirm, setShouldConfirm] = useState(false);
 
-    const handleAddUser = useCallback(()=>{
-        if(!shouldConfirm) {
-            setShouldConfirm(true)
+    const saveGrant = useRef(null)
+
+    const { convId } = useParams();
+
+    const handleAddUser = useCallback(() => {
+        let newGrantsKey = undefined;
+
+        if (shouldConfirm) {
+            newGrantsKey = saveGrant.current
         }
-        else{
 
-        }
-    },[shouldConfirm])
+        secureAxios
+            .post(`/api/users/${convId}`, {
+                addUsername: addUserUsername,
+                newGrantsKey
+            })
+            .then(async(res) => {
+                if (res.status === 202) {
+                    console.log(res.data);
+                    if(!shouldConfirm){
+                        const grant = res.data.grants[0]
+                        const otherUserGrant = await makeNewUserGrant(grant.grants, res.data.addUserPubKey)
+                        saveGrant.current = otherUserGrant
+                        setShouldConfirm(true)
+                    }
+                }
+                else if(res.status === 200){
+                    setShouldConfirm(false)
+                    setAddUserModalOpen(false)
+                }
+            });
+    }, [shouldConfirm, addUserUsername, convId]);
 
-    return <>
-
-
-        <div className="conv-settings-header">
-            <div className="conv-settings-button" onClick={() => { setSettingsOpen((old) => !old) }}>
-                <Settings size={18} />
-            </div>{settingsInfo.title}</div>
-        <div className="conv-settings-users">
-            <span>Participants</span>
-            {settingsInfo.users.normal.map(user =>
-                <div className={"conv-settings-users-one "+((isAdmin.admin && isAdmin.username!==user) ? "conv-settings-users-one-control" : "")} key={user}>
-                    <div className="conv-settings-users-info">
-                        <div className="user-initials" style={{backgroundColor: generateColorFromUsername(user)}}>
-                            {user?.slice(0, 2).toUpperCase() || "US"}
-                        </div>
-                        <div className="conv-settings-users-name">{user+(isAdmin.username===user ? " (You)" : "")}</div>
-                        {settingsInfo.users.admin.includes(user) ? <div className="conv-settings-users-admin">Admin</div> : ""}
-                    </div>
-                    <div className="conv-settings-users-actions">
-                        <UserX />
-                        <ArrowBigUp/>
-                    </div>
+    return (
+        <>
+            <div className="conv-settings-header">
+                <div
+                    className="conv-settings-button"
+                    onClick={() => {
+                        setSettingsOpen((old) => !old);
+                    }}
+                >
+                    <Settings size={18} />
                 </div>
-            )}
-            {isAdmin.admin ? <div onClick={()=>{setAddUserModalOpen(true)}} className="conv-settings-add-user">Add a user <UserPlus /></div> : ""}
-        </div>
-
-        <Modal isOpen={isAddUserModalOpen} onClose={()=>{setAddUserModalOpen(false)}}>
-            <center><h1>Give access</h1></center>
-            <input placeholder="Username" value={addUserUsername} onChange={(e)=>{setAddUserUsername(e.value)}} className="modal-input" />
-            <div className="add-users-to-conv-modal-buttons-container">
-                <button onClick={()=>{setShouldConfirm(false)}} className={"btn secondary unlock-account "+(!shouldConfirm ? "add-users-to-conv-modal-buttons-cancel-button" : "")}>Cancel</button>
-                <button className="btn primary confirm unlock-account" onClick={handleAddUser}>{shouldConfirm ? "Confirm" : "Add"}</button>
+                {settingsInfo.title}
             </div>
-            <br/><br/>
-            Giving access to portions of the conversation is a work in progress!
-        </Modal>
-    </>
-}
+            <div className="conv-settings-users">
+                <span>Participants</span>
+                {settingsInfo.users.normal.map((user) => (
+                    <div
+                        className={
+                            "conv-settings-users-one " +
+                            (isAdmin.admin && isAdmin.username !== user
+                                ? "conv-settings-users-one-control"
+                                : "")
+                        }
+                        key={user}
+                    >
+                        <div className="conv-settings-users-info">
+                            <div
+                                className="user-initials"
+                                style={{
+                                    backgroundColor:
+                                        generateColorFromUsername(user),
+                                }}
+                            >
+                                {user?.slice(0, 2).toUpperCase() || "US"}
+                            </div>
+                            <div className="conv-settings-users-name">
+                                {user +
+                                    (isAdmin.username === user ? " (You)" : "")}
+                            </div>
+                            {settingsInfo.users.admin.includes(user) ? (
+                                <div className="conv-settings-users-admin">
+                                    Admin
+                                </div>
+                            ) : (
+                                ""
+                            )}
+                        </div>
+                        <div className="conv-settings-users-actions">
+                            <UserX />
+                            <ArrowBigUp />
+                        </div>
+                    </div>
+                ))}
+                {isAdmin.admin ? (
+                    <div
+                        onClick={() => {
+                            setAddUserModalOpen(true);
+                        }}
+                        className="conv-settings-add-user"
+                    >
+                        Add a user <UserPlus />
+                    </div>
+                ) : (
+                    ""
+                )}
+            </div>
+
+            <Modal
+                isOpen={isAddUserModalOpen}
+                onClose={() => {
+                    setAddUserModalOpen(false);
+                }}
+            >
+                <center>
+                    <h1>Give access</h1>
+                </center>
+                <input
+                    placeholder="Username"
+                    value={addUserUsername}
+                    onChange={(e) => {
+                        setAddUserUsername(e.target.value);
+                    }}
+                    className="modal-input"
+                />
+                <div className="add-users-to-conv-modal-buttons-container">
+                    <button
+                        onClick={() => {
+                            setShouldConfirm(false);
+                        }}
+                        className={
+                            "btn secondary unlock-account " +
+                            (!shouldConfirm
+                                ? "add-users-to-conv-modal-buttons-cancel-button"
+                                : "")
+                        }
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        className="btn primary confirm unlock-account"
+                        onClick={handleAddUser}
+                    >
+                        {shouldConfirm ? "Confirm" : "Add"}
+                    </button>
+                </div>
+                <br />
+                <br />
+                Giving access to portions of the conversation is a work in
+                progress!
+            </Modal>
+        </>
+    );
+};

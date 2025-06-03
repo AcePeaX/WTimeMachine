@@ -11,7 +11,7 @@ import { encryptResponse } from '../middleware/encryptResponse.js';
 import crypto from "crypto";
 import { verifyMessage } from '@timemachine/security';
 
-import { addConvo, getUserConversations } from "./convo-handler.js";
+import { addConvo, getUserConversations, addConvoUsers } from "./convo-handler.js";
 import { uploadMedia, uploadMessage, getMessages, getMedia } from "./message-handler.js";
 
 
@@ -99,6 +99,8 @@ apiRouter.post("/user", (req, res) => {
 apiRouter.get("/convo", getUserConversations);
 
 apiRouter.post("/convo", addConvo);
+
+apiRouter.post("/users/:convId/", addConvoUsers)
 
 apiRouter.get("/message/:convId", getMessages);
 apiRouter.post("/message/:convId", uploadMessage);

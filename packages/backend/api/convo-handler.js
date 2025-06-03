@@ -2,6 +2,7 @@ import { Convo } from "../models/Convo.js";
 import { Grant } from "../models/Grant.js";
 
 import { validateRequest, logger } from "@timemachine/utils";
+import { User } from "../models/User.js";
 
 export const addConvo = async (req, res) => {
     const rules = {
@@ -98,3 +99,68 @@ export const getUserConversations = async (req, res) => {
         return res.status(500).json({ error: "Internal server error" });
     }
 };
+
+
+
+export const addConvoUsers = async(req, res)=>{
+
+    const rules = {
+        convId: { required: true, type: "string" },
+        username: { required: true, type: "string" },
+        addUsername: { required: true, type: "string" },
+        newGrantsKey: { type: "string" },
+        isAdmin: { type: "boolean" }
+    };
+
+    const data = {...req.params, ...req.body}
+
+    const errors = validateRequest(data, rules);
+    if (Object.keys(errors).length > 0) {
+        return res.status(400).json({ errors });
+    }
+
+    const Conversation = await Convo.findOne({_id:data.convId})
+    
+    if(!Conversation.adminUsers.includes(data.username)) {
+        return res.status(403).send({ error: "You don't have the permissions for such an action" })
+    }
+
+    if(Conversation.participantUsers.includes(data.addUsername)){
+        return res.status(400).send({ error: "This user is already part of this conversation" })
+    }
+
+    if(!data.newGrantsKey){
+        const grants = Grant.find({convoId: data.convId, grantee: data.username})
+        const addedUser = User.findOne({username: data.addUsername})
+        return res.status(202).send({status: 0, grants: await grants, addUserPubKey: (await addedUser).publicKey})
+    }
+
+    const isAdmin = data.isAdmin ? data.isAdmin : false
+
+    await Grant.create({
+        convoId: data.convId,
+        grantee: data.addUsername,
+        isAdmin,
+        grants: {
+            all:{
+                encryptedDerivedKey: data.newGrantsKey,
+            }
+        }
+    })
+
+    const participantUsers = Conversation.participantUsers
+    let adminUsers = Conversation.adminUsers
+
+    participantUsers.push(data.addUsername)
+    if(isAdmin){
+        adminUsers.push(data.addUsername)
+    }
+    else{
+        adminUsers = undefined
+    }
+
+    // # TO DO
+    await Convo.updateOne({_id: data.convId},{participantUsers, adminUsers})
+
+    res.status(200).send({status: 1})
+}
